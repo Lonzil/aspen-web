@@ -1,10 +1,7 @@
-﻿from __future__ import annotations
-
-import enum
+﻿import enum
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy.orm import Mapped
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -68,12 +65,12 @@ class User(SQLModel, table=True):
     last_failed_login_at: Optional[datetime] = Field(default=None)
     locked_until: Optional[datetime] = Field(default=None)
 
-    supply_lots: Mapped[List["SupplyLot"]] = Relationship(back_populates="farmer")
-    demand_orders: Mapped[List["DemandOrder"]] = Relationship(back_populates="vendor")
-    sms_logs: Mapped[List["SmsLog"]] = Relationship(back_populates="user")
-    verification_codes: Mapped[List["VerificationCode"]] = Relationship(back_populates="user")
-    password_reset_tokens: Mapped[List["PasswordResetToken"]] = Relationship(back_populates="user")
-    notifications: Mapped[List["Notification"]] = Relationship(back_populates="user")
+    supply_lots: List["SupplyLot"] = Relationship(back_populates="farmer")
+    demand_orders: List["DemandOrder"] = Relationship(back_populates="vendor")
+    sms_logs: List["SmsLog"] = Relationship(back_populates="user")
+    verification_codes: List["VerificationCode"] = Relationship(back_populates="user")
+    password_reset_tokens: List["PasswordResetToken"] = Relationship(back_populates="user")
+    notifications: List["Notification"] = Relationship(back_populates="user")
 
 
 class VerificationCode(SQLModel, table=True):
@@ -92,7 +89,7 @@ class VerificationCode(SQLModel, table=True):
     resend_count: int = Field(default=0)
     last_resend_at: Optional[datetime] = Field(default=None)
 
-    user: Mapped[User] = Relationship(back_populates="verification_codes")
+    user: User = Relationship(back_populates="verification_codes")
 
 
 class PasswordResetToken(SQLModel, table=True):
@@ -110,7 +107,7 @@ class PasswordResetToken(SQLModel, table=True):
     resend_count: int = Field(default=0)
     last_resend_at: Optional[datetime] = Field(default=None)
 
-    user: Mapped[User] = Relationship(back_populates="password_reset_tokens")
+    user: User = Relationship(back_populates="password_reset_tokens")
 
 
 class SupplyLot(SQLModel, table=True):
@@ -128,8 +125,8 @@ class SupplyLot(SQLModel, table=True):
     created_at: datetime = Field(default_factory=get_utc_now_naive)
     spoiled_at: Optional[datetime] = Field(default=None)
 
-    farmer: Mapped[User] = Relationship(back_populates="supply_lots")
-    matches: Mapped[List["Match"]] = Relationship(back_populates="supply_lot")
+    farmer: User = Relationship(back_populates="supply_lots")
+    matches: List["Match"] = Relationship(back_populates="supply_lot")
 
 
 class DemandOrder(SQLModel, table=True):
@@ -147,8 +144,8 @@ class DemandOrder(SQLModel, table=True):
     status: str = Field(default=OrderStatus.OPEN, index=True)
     created_at: datetime = Field(default_factory=get_utc_now_naive)
 
-    vendor: Mapped[User] = Relationship(back_populates="demand_orders")
-    matches: Mapped[List["Match"]] = Relationship(back_populates="demand_order")
+    vendor: User = Relationship(back_populates="demand_orders")
+    matches: List["Match"] = Relationship(back_populates="demand_order")
 
 
 class Match(SQLModel, table=True):
@@ -183,8 +180,8 @@ class Match(SQLModel, table=True):
     recorded_shelf_life_at_receipt_h: Optional[float] = Field(default=None)
     dispute_resolution: Optional[str] = Field(default=None)
 
-    supply_lot: Mapped[SupplyLot] = Relationship(back_populates="matches")
-    demand_order: Mapped[DemandOrder] = Relationship(back_populates="matches")
+    supply_lot: SupplyLot = Relationship(back_populates="matches")
+    demand_order: DemandOrder = Relationship(back_populates="matches")
 
 
 class SmsLog(SQLModel, table=True):
@@ -197,7 +194,7 @@ class SmsLog(SQLModel, table=True):
     status: str = Field(index=True)
     created_at: datetime = Field(default_factory=get_utc_now_naive)
 
-    user: Mapped[Optional[User]] = Relationship(back_populates="sms_logs")
+    user: Optional[User] = Relationship(back_populates="sms_logs")
 
 
 class Notification(SQLModel, table=True):
@@ -210,7 +207,7 @@ class Notification(SQLModel, table=True):
     is_read: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=get_utc_now_naive)
 
-    user: Mapped[User] = Relationship(back_populates="notifications")
+    user: User = Relationship(back_populates="notifications")
 
 
 class EngineRun(SQLModel, table=True):
