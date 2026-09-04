@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-database me-1"></i>Logistics Data Engine</small>
+            <h2 class="fw-bold text-dark">CSV Data Manager</h2>
+            <p class="text-muted">Bulk upload harvest entries or export matching results for downstream supply chain analysis.</p>
+        </div>
+        <div>
+            <a href="/admin/engine-runs" class="btn btn-outline-forest me-2"><i class="bi bi-clock-history me-1"></i>View Upload Logs</a>
+            <a href="/admin/audit" class="btn btn-outline-secondary me-2"><i class="bi bi-table me-1"></i>Audit Tables</a>
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#schemaGuideModal">
+                <i class="bi bi-info-circle me-1"></i>Schema Guide
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Import Card -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold"><i class="bi bi-upload me-2"></i>Import CSV Data</h5>
+                    <p class="text-muted small">Upload harvest records or inventory updates in bulk.</p>
+                    
+                    <form id="import-form" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Select CSV File <span class="text-danger">*</span></label>
+                            <input type="file" name="file" class="form-control" accept=".csv" required>
+                            <small class="text-muted">Max size: 10MB</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Assign to User ID</label>
+                            <input type="number" name="user_id" class="form-control" placeholder="e.g. 1 (Farmer ID)" required>
+                        </div>
+                        <div class="alert alert-warning small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Supply rows require <strong>spoilage_time</strong>. Demand rows require <strong>min_shelf_life_h</strong>.
+                            Rows with missing or invalid data will be <strong>skipped</strong>. A summary will be shown after import.
+                        </div>
+                        <button type="submit" class="btn btn-forest w-100">
+                            <i class="bi bi-upload me-1"></i>Upload and Run Engine
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Card -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold"><i class="bi bi-download me-2"></i>Export Data</h5>
+                    <p class="text-muted small">Download the latest match results or pending orders.</p>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3 text-center">
+                                <small class="text-muted text-uppercase">Total Matches</small>
+                                <h5 class="fw-bold mb-0">{{ total_matches }} Entries</h5>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3 text-center">
+                                <small class="text-muted text-uppercase">Last Generated</small>
+                                <h5 class="fw-bold mb-0">{{ last_generated }}</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group mb-3">
+                        <label class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                <strong>Full Match History</strong>
+                                <small class="d-block text-muted">Includes all historical logistics pairings</small>
+                            </div>
+                            <input type="radio" name="export_type" value="matches" class="form-check-input" checked>
+                        </label>
+                        <label class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-text me-2"></i>
+                                <strong>Pending Procurement</strong>
+                                <small class="d-block text-muted">Open requirements waiting for farmer lots</small>
+                            </div>
+                            <input type="radio" name="export_type" value="pending" class="form-check-input">
+                        </label>
+                    </div>
+                    
+                    <a href="/admin/export-csv?export_type=matches" id="export-download-link" class="btn btn-forest w-100">
+                        <i class="bi bi-download me-1"></i>Download Matches CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Info -->
+    <div class="row g-3 mt-2">
+        <div class="col-md-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-activity me-1"></i>Engine Status</h6>
+                    <p class="small text-muted mb-0">
+                        ASPEN engine configuration:
+                        Avg speed: <strong>{{ avg_speed_kmph }} km/h</strong>,
+                        Dispatch buffer: <strong>{{ dispatch_buffer_hours }} h</strong>,
+                        Engine interval: <strong>{{ engine_interval_minutes }} min</strong>.
+                        <span class="{% if engine_status == 'HEALTHY' %}text-leaf{% elif engine_status == 'ERROR' %}text-danger{% else %}text-muted{% endif %} fw-bold">
+                            <i class="bi bi-circle-fill me-1 small"></i>{{ engine_status }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-file-text me-1"></i>Documentation</h6>
+                    <p class="small text-muted mb-0">Need help with CSV formatting? 
+                        <a href="#" class="text-forest fw-bold" data-bs-toggle="modal" data-bs-target="#schemaGuideModal">View Documentation →</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schema Guide Modal -->
+<div class="modal fade" id="schemaGuideModal" tabindex="-1" aria-labelledby="schemaGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-forest text-white">
+                <h5 class="modal-title" id="schemaGuideModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>CSV Schema Guide
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Your CSV file must include a <code>type</code> column to distinguish between supply and demand rows.
+                </p>
+                <h6 class="fw-bold text-forest">Supply Rows</h6>
+                <p class="small text-muted">Use <code>type</code> = <code>supply</code> and include the following columns:</p>
+                <ul class="small">
+                    <li><code>type</code> – must be <code>supply</code></li>
+                    <li><code>crop_type</code> – e.g., <code>tomato</code>, <code>onion</code></li>
+                    <li><code>quantity_kg</code> – positive number</li>
+                    <li><code>lat</code> – latitude (-90 to 90)</li>
+                    <li><code>lon</code> – longitude (-180 to 180)</li>
+                    <li><code>location_label</code> – optional display text</li>
+                    <li><code>spoilage_time</code> – e.g., <code>+48h</code> or ISO datetime</li>
+                </ul>
+                <h6 class="fw-bold text-forest mt-4">Demand Rows</h6>
+                <p class="small text-muted">Use <code>type</code> = <code>demand</code> and include the following columns:</p>
+                <ul class="small">
+                    <li><code>type</code> – must be <code>demand</code></li>
+                    <li><code>crop_type</code> – e.g., <code>tomato</code>, <code>onion</code></li>
+                    <li><code>quantity_kg</code> – positive number</li>
+                    <li><code>lat</code> – latitude (-90 to 90)</li>
+                    <li><code>lon</code> – longitude (-180 to 180)</li>
+                    <li><code>location_label</code> – optional display text</li>
+                    <li><code>min_shelf_life_h</code> – positive number (hours)</li>
+                </ul>
+                <div class="alert alert-info small mt-4 mb-0">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    Rows with missing or invalid data will be skipped. A summary will appear after import.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update export link when radio selection changes
+function updateExportLink() {
+    const selected = document.querySelector('input[name="export_type"]:checked');
+    const link = document.getElementById('export-download-link');
+    if (!selected || !link) return;
+
+    if (selected.value === 'pending') {
+        link.href = '/admin/export-csv?export_type=pending';
+        link.textContent = 'Download Pending Orders CSV';
+    } else {
+        link.href = '/admin/export-csv?export_type=matches';
+        link.textContent = 'Download Matches CSV';
+    }
+}
+
+// Attach change listeners to radio buttons
+document.querySelectorAll('input[name="export_type"]').forEach(radio => {
+    radio.addEventListener('change', updateExportLink);
+});
+
+// Initial update on page load
+updateExportLink();
+
+// Import form handling
+document.getElementById('import-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const resp = await fetch('/admin/import-csv?user_id=' + formData.get('user_id'), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+    });
+
+    if (resp.ok) {
+        const data = await resp.json();
+
+        let summary = data.message || 'Import completed.';
+
+        if (data.skipped_rows && Array.isArray(data.skipped_rows) && data.skipped_rows.length > 0) {
+            summary += '\n\nSkipped rows:\n';
+            for (const row of data.skipped_rows.slice(0, 10)) {
+                summary += `Row ${row.row}: ${row.reason}\n`;
+            }
+            if (data.skipped_rows.length > 10) {
+                summary += `... and ${data.skipped_rows.length - 10} more skipped row(s).\n`;
+            }
+        }
+
+        if (data.engine_summary) {
+            summary += `\nEngine matched: ${data.engine_summary.matched_kg ?? 0} kg`;
+            summary += `\nWaste: ${data.engine_summary.waste_kg ?? 0} kg`;
+            summary += `\nUnmet: ${data.engine_summary.unmet_kg ?? 0} kg`;
+        }
+
+        alert(summary);
+        location.reload();
+    } else {
+        const err = await resp.json();
+        alert('Error: ' + (err.detail || 'Import failed'));
+    }
+});
+</script>
+{% endblock %}

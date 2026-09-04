@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold text-dark">Transaction History</h2>
+            <p class="text-muted">Review your completed deliveries and spoiled lots.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('farmer_dashboard') }}" class="btn btn-outline-forest">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search history..." id="history-search">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold mb-1">From</label>
+            <input type="date" class="form-control" id="filter-from">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold mb-1">To</label>
+            <input type="date" class="form-control" id="filter-to">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100" id="clear-filters">
+                <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">All Transactions</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="history-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Crop</th>
+                        <th>Qty (kg)</th>
+                        <th>Outcome</th>
+                        <th>Date</th>
+                        <th>Vendor</th>
+                        <th>Phone</th>
+                        <th>Distance (km)</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody">
+                    {% for item in history %}
+                    {# Build a safe search text that works with None values #}
+                    {% set vendor_txt = item.vendor_name if item.vendor_name else '' %}
+                    {% set phone_txt = item.vendor_phone if item.vendor_phone else '' %}
+                    {% set dist_txt = item.distance_km|string if item.distance_km is not none else '' %}
+                    {% set prio_txt = item.priority_score|string if item.priority_score is not none else '' %}
+                    {% set searchable = item.crop_type ~ ' ' ~ item.quantity_kg|string ~ ' ' ~ item.outcome ~ ' ' ~ item.date_str ~ ' ' ~ vendor_txt ~ ' ' ~ phone_txt ~ ' ' ~ dist_txt ~ ' ' ~ prio_txt %}
+                    <tr data-search-text="{{ searchable|lower }}" data-date-iso="{{ item.date_iso }}" data-outcome="{{ item.outcome }}">
+                        <td><strong>{{ item.crop_type|capitalize }}</strong></td>
+                        <td>{{ item.quantity_kg }} kg</td>
+                        <td>
+                            {% if item.outcome == 'Closed' %}
+                                {% if item.close_type and item.close_type != 'Manual Close' %}
+                                <span class="badge bg-leaf"
+                                      title="{{ item.close_type }}{% if item.spoilage_reason %} – {{ item.spoilage_reason }}{% endif %}"
+                                      data-bs-toggle="tooltip">
+                                    Closed
+                                </span>
+                                {% else %}
+                                <span class="badge bg-leaf">Closed</span>
+                                {% endif %}
+                            {% elif item.outcome == 'Spoiled' %}
+                                <span class="badge bg-danger"
+                                      {% if item.spoilage_reason %}title="{{ item.spoilage_reason }}" data-bs-toggle="tooltip"{% endif %}>
+                                    Spoiled
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ item.outcome }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.date_str }}</td>
+                        <td>{{ item.vendor_name if item.vendor_name is not none else '—' }}</td>
+                        <td>{{ item.vendor_phone if item.vendor_phone is not none else '—' }}</td>
+                        <td>
+                            {% if item.distance_km is not none %}
+                                {{ item.distance_km }} km
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.priority_score is not none %}
+                                <span class="badge bg-light text-dark">{{ item.priority_score }}/100</span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="no-history-row">
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            You have no transactions yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('history-search');
+    const filterFrom = document.getElementById('filter-from');
+    const filterTo = document.getElementById('filter-to');
+    const clearBtn = document.getElementById('clear-filters');
+    const tbody = document.getElementById('history-tbody');
+    const noRow = document.getElementById('no-history-row');
+
+    function applyFilters() {
+        const searchText = searchInput.value.trim().toLowerCase();
+        const fromDate = filterFrom.value;
+        const toDate = filterTo.value;
+
+        const rows = tbody.querySelectorAll('tr');
+        let visibleCount = 0;
+        rows.forEach(row => {
+            if (row === noRow) return;
+            const searchData = row.getAttribute('data-search-text') || '';
+            const isoDate = row.getAttribute('data-date-iso') || '';
+
+            // Date range filtering
+            let inRange = true;
+            if (fromDate) {
+                inRange = inRange && isoDate >= fromDate;
+            }
+            if (toDate) {
+                const toDateInclusive = new Date(toDate);
+                toDateInclusive.setDate(toDateInclusive.getDate() + 1);
+                const toStr = toDateInclusive.toISOString().split('T')[0];
+                inRange = inRange && isoDate < toStr;
+            }
+
+            const matchesSearch = searchData.includes(searchText);
+            if (matchesSearch && inRange) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (noRow) {
+            noRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+        }
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    filterFrom.addEventListener('change', applyFilters);
+    filterTo.addEventListener('change', applyFilters);
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        filterFrom.value = '';
+        filterTo.value = '';
+        applyFilters();
+    });
+
+    // Initialize Bootstrap tooltips for badges
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

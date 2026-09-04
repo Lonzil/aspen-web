@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-clock-history me-1"></i>System Logs</small>
+            <h2 class="fw-bold text-dark">Engine Run History</h2>
+            <p class="text-muted">Chronological log of all matching engine executions.</p>
+        </div>
+        <a href="/admin/import-export" class="btn btn-outline-forest">
+            <i class="bi bi-arrow-left me-1"></i>Back to CSV Data Manager
+        </a>
+    </div>
+
+    <!-- Engine Runs Table -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Crop</th>
+                        <th>Supply</th>
+                        <th>Demand</th>
+                        <th>Matched (kg)</th>
+                        <th>Waste (kg)</th>
+                        <th>Unmet (kg)</th>
+                        <th>Runtime</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                    <tr>
+                        <td class="small">{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') if run.created_at else '--' }}</td>
+                        <td><strong>{{ run.crop_type or 'All' }}</strong></td>
+                        <td>{{ run.supply_count }}</td>
+                        <td>{{ run.demand_count }}</td>
+                        <td class="text-leaf fw-bold">{{ run.matched_kg }}</td>
+                        <td class="text-danger">{{ run.waste_kg }}</td>
+                        <td class="text-harvest">{{ run.unmet_kg }}</td>
+                        <td class="text-muted">{{ (run.runtime_ms / 1000)|round(2) }}s</td>
+                        <td>
+                            {% if run.status == 'success' %}
+                                <span class="badge bg-leaf">Success</span>
+                            {% elif run.status == 'failed' %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ run.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No engine runs yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            Showing {{ runs|length }} engine run(s)
+        </div>
+    </div>
+</div>
+{% endblock %}

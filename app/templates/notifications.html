@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold text-dark">Notifications</h2>
+            <p class="text-muted">All your in-app alerts and updates.</p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if unread_count > 0 %}
+            <button class="btn btn-outline-forest" id="mark-all-read-page">
+                <i class="bi bi-check-all me-1"></i>Mark all as read
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="list-group list-group-flush" id="notification-list">
+            {% for notif in notifications %}
+            <div class="list-group-item notification-item-page {% if not notif.is_read %}unread{% endif %}" 
+                 data-notification-id="{{ notif.id }}">
+                <div class="d-flex align-items-start">
+                    <span class="notification-badge-dot bg-{{ notif.type.value }} me-3 mt-1"></span>
+                    <div class="flex-grow-1">
+                        <p class="mb-1 {{ 'fw-bold' if not notif.is_read else '' }}">{{ notif.message }}</p>
+                        <small class="text-muted">{{ notif.created_at.strftime('%Y-%m-%d %H:%M') if notif.created_at else '' }}</small>
+                    </div>
+                    {% if not notif.is_read %}
+                    <button class="btn btn-sm btn-link text-forest mark-read-page">Mark read</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="list-group-item text-center text-muted py-4">
+                <i class="bi bi-bell-slash fs-2 d-block mb-2"></i>
+                No notifications yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mark single notification as read on page
+    document.querySelectorAll('.mark-read-page').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const container = this.closest('.notification-item-page');
+            const notificationId = container.getAttribute('data-notification-id');
+            fetch('/notifications/' + notificationId + '/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.success) {
+                    container.classList.remove('unread');
+                    const paragraph = container.querySelector('p');
+                    if (paragraph) paragraph.classList.remove('fw-bold');
+                    this.remove();
+                    // update unread badge in navbar if present
+                    const badge = document.getElementById('notification-badge');
+                    if (badge) {
+                        const current = parseInt(badge.textContent) || 0;
+                        const newCount = Math.max(0, current - 1);
+                        if (newCount === 0) badge.remove();
+                        else badge.textContent = newCount;
+                    }
+                }
+            })
+            .catch(err => console.error(err));
+        });
+    });
+
+    // Mark all as read on page
+    const markAllBtn = document.getElementById('mark-all-read-page');
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function() {
+            fetch('/notifications/read-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            })
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            })
+            .catch(err => console.error(err));
+        });
+    }
+});
+</script>
+{% endblock %}

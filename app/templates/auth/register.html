@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block content %}
+{% set form_data = form_data|default({}) %}
+<div class="container">
+    <div class="row justify-content-center mt-4">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-tree-fill text-forest" style="font-size: 2rem;"></i>
+                        <h4 class="text-forest fw-bold mt-2">Create Your Account</h4>
+                        <p class="text-muted small">Join Ghana's agricultural logistics ecosystem</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('register_post') }}" autocomplete="off" id="register-form">
+                        <!-- Row 1: Name & Phone -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-person me-1"></i>Full Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" name="name" id="name" class="form-control"
+                                       placeholder="e.g. Kwadwo Mensah"
+                                       value="{{ form_data.get('name', '') }}"
+                                       minlength="2"
+                                       autocomplete="off" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-phone me-1"></i>Phone Number <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text phone-prefix d-flex align-items-center" style="background-color: #f8f9fa; border-right: none; padding: 0.375rem 0.75rem;">
+                                        <img src="{{ url_for('static', path='img/ghana-flag.png') }}" alt="Ghana flag" style="width: 22px; height: 16px; object-fit: cover; margin-right: 6px;">
+                                        <span style="line-height: 1;">+233</span>
+                                    </span>
+                                    <input type="tel" name="phone_display" id="phone"
+                                           class="form-control"
+                                           placeholder="0XX XXX XXXX"
+                                           maxlength="12"
+                                           inputmode="numeric"
+                                           pattern="0[0-9]{2} [0-9]{3} [0-9]{4}"
+                                           data-raw-field="phone_raw"
+                                           oninput="formatPhoneInput(this)"
+                                           autocomplete="off" required>
+                                    <input type="hidden" name="phone" id="phone_raw" value="{{ form_data.get('phone', '') }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Email (Optional) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">
+                                <i class="bi bi-envelope me-1"></i>Email Address (Optional)
+                            </label>
+                            <input type="email" name="email" id="email" class="form-control"
+                                   placeholder="name@example.com"
+                                   value="{{ form_data.get('email', '') }}"
+                                   autocomplete="off">
+                        </div>
+
+                        <!-- Role Selection -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Account Role <span class="text-danger">*</span></label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="role" id="role_farmer" value="farmer"
+                                           {% if form_data.get('role') == 'farmer' %}checked{% endif %} required>
+                                    <label class="btn btn-outline-forest w-100 h-100 p-3" for="role_farmer">
+                                        <i class="bi bi-tree fs-4 d-block"></i>
+                                        <span class="fw-bold">Farmer</span><br>
+                                        <small class="text-muted">I want to list my produce</small>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="role" id="role_vendor" value="vendor"
+                                           {% if form_data.get('role') == 'vendor' %}checked{% endif %}>
+                                    <label class="btn btn-outline-forest w-100 h-100 p-3" for="role_vendor">
+                                        <i class="bi bi-shop fs-4 d-block"></i>
+                                        <span class="fw-bold">Vendor</span><br>
+                                        <small class="text-muted">I want to buy wholesale</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location: Region → District → Town (cascading) -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-geo-alt me-1"></i>Region <span class="text-danger">*</span>
+                                </label>
+                                <select name="region" id="region" class="form-select" required>
+                                    <option value="" disabled selected>Select Region</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-geo-alt me-1"></i>District <span class="text-danger">*</span>
+                                </label>
+                                <select name="district" id="district" class="form-select" required disabled>
+                                    <option value="" disabled selected>Select District</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-pin-map me-1"></i>Town / City / Village <span class="text-danger">*</span>
+                                </label>
+                                <select name="town" id="town" class="form-select" required disabled>
+                                    <option value="" disabled selected>Select Town</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Passwords -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-lock me-1"></i>Password <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" name="password" id="password_reg"
+                                           class="form-control" minlength="8" maxlength="72"
+                                           autocomplete="new-password" required>
+                                    <button class="btn btn-outline-secondary" type="button"
+                                            onclick="togglePassword('password_reg')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">
+                                    <i class="bi bi-shield-check me-1"></i>Confirm Password <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" name="confirm_password" id="confirm_password"
+                                           class="form-control" minlength="8" maxlength="72"
+                                           autocomplete="new-password" required>
+                                    <button class="btn btn-outline-secondary" type="button"
+                                            onclick="togglePassword('confirm_password')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consent Checkbox -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="accepted_terms" id="accepted_terms" value="true"
+                                   {% if form_data.get('accepted_terms') %}checked{% endif %} required>
+                            <label class="form-check-label small" for="accepted_terms">
+                                I have read and agree to the
+                                <a href="/terms" target="_blank" class="text-forest fw-bold">Terms of Service</a> and
+                                <a href="/privacy" target="_blank" class="text-forest fw-bold">Privacy Policy</a>,
+                                and I consent to receive SMS notifications.
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-forest w-100 mb-3">
+                            Register <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </form>
+
+                    <p class="text-center small mb-0">
+                        Already have an account?
+                        <a href="{{ url_for('login_page') }}" class="text-forest fw-bold">Login</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Inline data – hidden from the JS linter by using a non‑executable script tag #}
+<script id="places-data" type="application/json">{{ places|tojson }}</script>
+<script id="form-data" type="application/json">{{ form_data|tojson }}</script>
+<script>
+// Read the JSON data injected by the backend
+var GHANA_PLACES = JSON.parse(document.getElementById('places-data').textContent);
+var FORM_DATA = JSON.parse(document.getElementById('form-data').textContent);
+
+// ---------------------------------------------------------------------------
+// Password validation
+// ---------------------------------------------------------------------------
+function validatePassword(password) {
+    if (password.length < 8) return "Password must be at least 8 characters long.";
+    if (password.length > 72) return "Password must be at most 72 characters long.";
+    if (!/[a-z]/.test(password)) return "Password must include at least one lowercase letter.";
+    if (!/[A-Z]/.test(password)) return "Password must include at least one uppercase letter.";
+    if (!/[0-9]/.test(password)) return "Password must include at least one digit.";
+    if (!/[^a-zA-Z0-9]/.test(password)) return "Password must include at least one special character.";
+    return null;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: populate a <select>
+// ---------------------------------------------------------------------------
+function populateSelect(selectEl, items, valueKey, textKey) {
+    selectEl.innerHTML = '<option value="" disabled selected>Select</option>';
+    if (!items) return;
+    var options = Array.isArray(items) ? items : Object.keys(items).sort();
+    options.forEach(function(item) {
+        var opt = document.createElement('option');
+        if (typeof item === 'string') {
+            opt.value = item;
+            opt.textContent = item;
+        } else {
+            opt.value = item[valueKey];
+            opt.textContent = item[textKey];
+        }
+        selectEl.appendChild(opt);
+    });
+}
+
+// --- Cascading dropdown elements ---
+var regionSelect = document.getElementById('region');
+var districtSelect = document.getElementById('district');
+var townSelect = document.getElementById('town');
+
+// ---------------------------------------------------------------------------
+// Function to apply saved form data to the dropdowns
+// ---------------------------------------------------------------------------
+function applySavedLocation() {
+    if (!FORM_DATA || Object.keys(FORM_DATA).length === 0) return;
+
+    // Preselect region
+    var savedRegion = FORM_DATA.region || '';
+    if (savedRegion) {
+        // Find matching region key (case-insensitive)
+        var regionKey = null;
+        Object.keys(GHANA_PLACES).forEach(function(key) {
+            if (key.toLowerCase() === savedRegion.toLowerCase()) {
+                regionKey = key;
+            }
+        });
+        if (regionKey) {
+            regionSelect.value = regionKey;
+            // Populate districts for this region
+            var districts = Object.keys(GHANA_PLACES[regionKey]).sort();
+            populateSelect(districtSelect, districts, null, null);
+            districtSelect.disabled = false;
+
+            // Preselect district
+            var savedDistrict = FORM_DATA.district || '';
+            if (savedDistrict) {
+                var districtKey = null;
+                districts.forEach(function(key) {
+                    if (key.toLowerCase() === savedDistrict.toLowerCase()) {
+                        districtKey = key;
+                    }
+                });
+                if (districtKey) {
+                    districtSelect.value = districtKey;
+                    // Populate towns for this district
+                    var towns = GHANA_PLACES[regionKey][districtKey];
+                    populateSelect(townSelect, towns, 'name', 'name');
+                    townSelect.disabled = false;
+
+                    // Preselect town
+                    var savedTown = FORM_DATA.town || '';
+                    if (savedTown) {
+                        var townKey = null;
+                        towns.forEach(function(t) {
+                            if (t.name.toLowerCase() === savedTown.toLowerCase()) {
+                                townKey = t.name;
+                            }
+                        });
+                        if (townKey) {
+                            townSelect.value = townKey;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1. Populate region dropdown
+// ---------------------------------------------------------------------------
+populateSelect(regionSelect, GHANA_PLACES, null, null);
+regionSelect.disabled = false;
+
+// Apply saved location if present (before event listeners? It's fine)
+applySavedLocation();
+
+// ---------------------------------------------------------------------------
+// 2. Region → District
+// ---------------------------------------------------------------------------
+regionSelect.addEventListener('change', function() {
+    var region = this.value;
+    districtSelect.innerHTML = '<option value="" disabled selected>Select District</option>';
+    townSelect.innerHTML = '<option value="" disabled selected>Select Town</option>';
+    townSelect.disabled = true;
+    if (!region || !GHANA_PLACES[region]) {
+        districtSelect.disabled = true;
+        return;
+    }
+    var districts = Object.keys(GHANA_PLACES[region]).sort();
+    populateSelect(districtSelect, districts, null, null);
+    districtSelect.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
+// 3. District → Town
+// ---------------------------------------------------------------------------
+districtSelect.addEventListener('change', function() {
+    var region = regionSelect.value;
+    var district = this.value;
+    townSelect.innerHTML = '<option value="" disabled selected>Select Town</option>';
+    townSelect.disabled = true;
+    if (!region || !district || !GHANA_PLACES[region] || !GHANA_PLACES[region][district]) {
+        return;
+    }
+    var towns = GHANA_PLACES[region][district];
+    populateSelect(townSelect, towns, 'name', 'name');
+    townSelect.disabled = false;
+});
+
+// ---------------------------------------------------------------------------
+// Phone number repopulation (if form data contains phone)
+// ---------------------------------------------------------------------------
+(function() {
+    var rawPhone = document.getElementById('phone_raw').value;
+    if (rawPhone && rawPhone.length === 10) {
+        // Format as 0XX XXX XXXX
+        var formatted = rawPhone.slice(0, 3) + ' ' + rawPhone.slice(3, 6) + ' ' + rawPhone.slice(6);
+        document.getElementById('phone').value = formatted;
+    }
+})();
+
+// --- Password toggle ---
+function togglePassword(id) {
+    var field = document.getElementById(id);
+    var icon = field.nextElementSibling.querySelector('i');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
+// --- Intercept form submission to validate password ---
+document.getElementById('register-form').addEventListener('submit', function(e) {
+    var password = document.getElementById('password_reg').value;
+    var confirm = document.getElementById('confirm_password').value;
+
+    var error = validatePassword(password);
+    if (error) {
+        e.preventDefault();
+        alert(error);
+        return;
+    }
+    if (password !== confirm) {
+        e.preventDefault();
+        alert('Passwords do not match.');
+    }
+});
+</script>
+{% endblock %}

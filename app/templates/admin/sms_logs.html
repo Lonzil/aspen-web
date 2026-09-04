@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-chat-dots me-1"></i>Communication Logs</small>
+            <h2 class="fw-bold text-dark">SMS Log</h2>
+            <p class="text-muted">Audit trail of all automated and manual SMS notifications sent to agricultural partners.</p>
+        </div>
+        <div>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search by phone, message, or status..." id="sms-search">
+                <button class="btn btn-outline-secondary" onclick="location.reload()"><i class="bi bi-arrow-repeat"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase">Total Logs</small>
+                    <h5 class="fw-bold">{{ logs|length }}</h5>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase">Success Rate</small>
+                    <h5 class="fw-bold text-leaf">
+                        {% set sent = logs|selectattr('status', 'eq', 'sent')|list|length %}
+                        {{ (sent / logs|length * 100)|round(1) if logs else 0 }}%
+                    </h5>
+                </div>
+                <div class="col-md-4">
+                    <small class="text-muted text-uppercase">Failures</small>
+                    <h5 class="fw-bold text-danger">
+                        {{ logs|selectattr('status', 'eq', 'failed')|list|length }}
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMS Log Table -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-clock me-1"></i>Timestamp</th>
+                        <th><i class="bi bi-phone me-1"></i>Recipient Phone</th>
+                        <th><i class="bi bi-chat-left-text me-1"></i>Message</th>
+                        <th class="text-end">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="sms-log-body">
+                    {% for log in logs %}
+                    <tr>
+                        <td class="small">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '--' }}</td>
+                        <td class="small">{{ log.phone }}</td>
+                        <td class="small">{{ log.message[:80] }}{% if log.message|length > 80 %}...{% endif %}</td>
+                        <td class="text-end">
+                            {% if log.status == 'sent' %}
+                                <span class="badge bg-leaf">Sent</span>
+                            {% elif log.status == 'simulated' %}
+                                <span class="badge bg-harvest text-dark">Simulated</span>
+                            {% else %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No SMS records found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            Showing {{ logs|length }} communications
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row g-3 mt-2">
+        <div class="col-md-6">
+            <div class="card bg-leaf bg-opacity-10 border-leaf">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-info-circle me-1"></i>Audit Notice</h6>
+                    <p class="small text-muted mb-0">SMS logs provide an audit trail for all sent and simulated messages. Failed messages are recorded for review.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-question-circle me-1"></i>Need Support?</h6>
+                    <p class="small text-light mb-0">If messages to a recipient are failing, verify their network status or contact the regional ASPEN logistics hub.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('sms-search').addEventListener('keyup', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#sms-log-body tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

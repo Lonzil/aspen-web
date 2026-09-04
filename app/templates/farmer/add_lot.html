@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Left Column: Form -->
+        <div class="col-lg-8">
+            <h2 class="fw-bold text-dark">New Harvest Entry</h2>
+            <p class="text-muted">Record your produce details accurately to ensure optimal logistics and vendor matching.</p>
+
+            <form id="add-lot-form">
+                <div id="crop-lines">
+                    <!-- Crop Line 1 -->
+                    <div class="card crop-line-item mb-3 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold mb-0">
+                                    <span class="badge bg-leaf me-2 crop-number">1</span>
+                                    Produce Line Item
+                                </h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-line d-none">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">
+                                        <i class="bi bi-plant me-1"></i>Category
+                                    </label>
+                                    <select name="crop_category[]" class="form-select crop-category" required>
+                                        <option value="" disabled selected>Select Category</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">
+                                        <i class="bi bi-plant me-1"></i>Crop
+                                    </label>
+                                    <select name="crop_type[]" class="form-select crop-type" required disabled>
+                                        <option value="" disabled selected>Select Crop</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">
+                                        <i class="bi bi-speedometer2 me-1"></i>Quantity (kg)
+                                    </label>
+                                    <input type="text" name="quantity[]" class="form-control" inputmode="decimal" placeholder="45" oninput="filterNumericInput(this)" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">
+                                        <i class="bi bi-clock me-1"></i>Spoilage Time (hrs)
+                                    </label>
+                                    <input type="text" name="spoilage_hours[]" class="form-control" inputmode="decimal" placeholder="72" oninput="filterNumericInput(this)" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="add-crop-area" class="text-center p-4 border border-dashed border-forest rounded mb-4" style="border-style: dashed !important;">
+                    <i class="bi bi-plus-circle fs-3 text-forest"></i>
+                    <p class="fw-bold text-forest mt-2 mb-0" role="button" id="add-crop-btn">Add Another Crop</p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right Column: Summary -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm sticky-top" style="top: 80px;">
+                <div class="card-header bg-light">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-truck me-1"></i>Logistics Summary</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Cascading location dropdowns -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold"><i class="bi bi-geo-alt me-1"></i>Region <span class="text-danger">*</span></label>
+                        <select name="region" id="region" class="form-select" required>
+                            <option value="" disabled selected>Select Region</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold"><i class="bi bi-geo-alt me-1"></i>District <span class="text-danger">*</span></label>
+                        <select name="district" id="district" class="form-select" required disabled>
+                            <option value="" disabled selected>Select District</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold"><i class="bi bi-pin-map me-1"></i>Town / City / Village <span class="text-danger">*</span></label>
+                        <select name="town" id="town" class="form-select" required disabled>
+                            <option value="" disabled selected>Select Town</option>
+                        </select>
+                    </div>
+
+                    <!-- Location Name (editable, auto-filled from dropdowns or GPS reverse geocoding) -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold"><i class="bi bi-geo me-1"></i>Location Name</label>
+                        <input type="text" name="location_label" id="location_label" class="form-control" placeholder="Auto-filled or enter custom location">
+                    </div>
+
+                    <!-- GPS checkbox & button -->
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="at-location">
+                        <label class="form-check-label small" for="at-location">
+                            I am currently at this location
+                        </label>
+                    </div>
+                    <button type="button" id="gps-btn" class="btn btn-outline-forest w-100 mb-2" disabled>
+                        <i class="bi bi-crosshair me-1"></i>Get Current GPS
+                    </button>
+                    <div id="gps-status" class="text-center small"></div>
+                    <input type="hidden" name="lat" id="lat">
+                    <input type="hidden" name="lon" id="lon">
+
+                    <hr>
+                    <div class="bg-light rounded p-3">
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span>Crop Lines:</span>
+                            <strong id="crop-count">1</strong>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span>Total Quantity:</span>
+                            <strong class="text-forest" id="total-qty">0 kg</strong>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning small mt-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Accurate spoilage time helps us prioritize your pickup within the logistics network.
+                    </div>
+                    <button type="button" id="submit-btn" class="btn btn-forest w-100">
+                        Submit Harvest <i class="bi bi-plus-circle ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Inline data – hidden from the JS linter by using a non‑executable script tag #}
+<script id="places-data" type="application/json">{{ places|tojson }}</script>
+<script id="crops-data" type="application/json">{{ crop_data|tojson }}</script>
+<script>
+// Read JSON data
+var GHANA_PLACES = JSON.parse(document.getElementById('places-data').textContent);
+var CROP_DATA = JSON.parse(document.getElementById('crops-data').textContent);
+
+// --- Helper: populate a <select> ---
+function populateSelect(selectEl, items, valueKey, textKey, selectedValue) {
+    selectedValue = selectedValue || null;
+    selectEl.innerHTML = '<option value="" disabled selected>Select</option>';
+    if (!items) return;
+    var options = Array.isArray(items) ? items : Object.keys(items).sort();
+    options.forEach(function(item) {
+        var opt = document.createElement('option');
+        if (typeof item === 'string') {
+            opt.value = item;
+            opt.textContent = item;
+        } else {
+            opt.value = item[valueKey];
+            opt.textContent = item[textKey];
+        }
+        selectEl.appendChild(opt);
+    });
+    if (selectedValue) {
+        var lower = selectedValue.toLowerCase().trim();
+        for (var i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].value.toLowerCase().trim() === lower) {
+                selectEl.value = selectEl.options[i].value;
+                break;
+            }
+        }
+    }
+}
+
+// --- Numeric input filter (only digits and one decimal point) ---
+function filterNumericInput(input) {
+    var filtered = input.value.replace(/[^\d.]/g, '');
+    var parts = filtered.split('.');
+    if (parts.length > 2) {
+        filtered = parts[0] + '.' + parts.slice(1).join('');
+    }
+    input.value = filtered;
+}
+
+// ---------------------------------------------------------------------------
+// Location cascading
+// ---------------------------------------------------------------------------
+var regionSelect = document.getElementById('region');
+var districtSelect = document.getElementById('district');
+var townSelect = document.getElementById('town');
+var locationLabelInput = document.getElementById('location_label');
+
+function updateLocationLabel() {
+    var region = regionSelect.value;
+    var district = districtSelect.value;
+    var town = townSelect.value;
+    if (region && district && town) {
+        locationLabelInput.value = town + ', ' + district + ', ' + region;
+    }
+}
+
+populateSelect(regionSelect, GHANA_PLACES, null, null);
+regionSelect.disabled = false;
+
+regionSelect.addEventListener('change', function() {
+    var region = this.value;
+    districtSelect.innerHTML = '<option value="" disabled selected>Select District</option>';
+    townSelect.innerHTML = '<option value="" disabled selected>Select Town</option>';
+    townSelect.disabled = true;
+    if (!region || !GHANA_PLACES[region]) {
+        districtSelect.disabled = true;
+        updateLocationLabel();
+        return;
+    }
+    var districts = Object.keys(GHANA_PLACES[region]).sort();
+    populateSelect(districtSelect, districts, null, null);
+    districtSelect.disabled = false;
+    updateLocationLabel();
+});
+
+districtSelect.addEventListener('change', function() {
+    var region = regionSelect.value;
+    var district = this.value;
+    townSelect.innerHTML = '<option value="" disabled selected>Select Town</option>';
+    townSelect.disabled = true;
+    if (!region || !district || !GHANA_PLACES[region] || !GHANA_PLACES[region][district]) {
+        updateLocationLabel();
+        return;
+    }
+    var towns = GHANA_PLACES[region][district];
+    populateSelect(townSelect, towns, 'name', 'name');
+    townSelect.disabled = false;
+    updateLocationLabel();
+});
+
+townSelect.addEventListener('change', updateLocationLabel);
+
+// --- GPS checkbox logic ---
+var atLocationCheckbox = document.getElementById('at-location');
+var gpsBtn = document.getElementById('gps-btn');
+
+atLocationCheckbox.addEventListener('change', function() {
+    gpsBtn.disabled = !this.checked;
+    if (!this.checked) {
+        document.getElementById('lat').value = '';
+        document.getElementById('lon').value = '';
+        document.getElementById('gps-status').innerHTML = '';
+    }
+});
+
+gpsBtn.addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Fetching GPS…';
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            document.getElementById('lat').value = lat;
+            document.getElementById('lon').value = lon;
+            document.getElementById('gps-status').innerHTML =
+                '<span class="badge bg-leaf">✓ Location captured</span>';
+
+            // Reverse geocode to auto-fill Location Name
+            fetch(`/api/geocode?lat=${lat}&lon=${lon}`, { credentials: 'include' })
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    if (data.label && data.label.trim()) {
+                        locationLabelInput.value = data.label.trim();
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Reverse geocoding failed', err);
+                });
+
+            btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Get Current GPS';
+            btn.disabled = false;
+        }, function() {
+            document.getElementById('gps-status').innerHTML =
+                '<span class="badge bg-danger">⚠ GPS unavailable. Using typed location.</span>';
+            btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Get Current GPS';
+            btn.disabled = false;
+        });
+    }
+});
+
+// --- Crop cascading logic ---
+function setupCropLine(line) {
+    var categorySelect = line.querySelector('.crop-category');
+    var cropSelect = line.querySelector('.crop-type');
+
+    // Populate categories
+    populateSelect(categorySelect, CROP_DATA, null, null);
+
+    // Category change → populate crop dropdown
+    categorySelect.addEventListener('change', function() {
+        var cat = this.value;
+        cropSelect.innerHTML = '<option value="" disabled selected>Select Crop</option>';
+        cropSelect.disabled = true;
+        if (!cat || !CROP_DATA[cat]) return;
+        var crops = CROP_DATA[cat];
+        populateSelect(cropSelect, crops, null, null);
+        cropSelect.disabled = false;
+    });
+}
+
+// Initialise the first crop line
+setupCropLine(document.querySelector('.crop-line-item'));
+
+// --- Crop line handling ---
+var lineCount = 1;
+document.getElementById('add-crop-btn').addEventListener('click', function() {
+    lineCount++;
+    var container = document.getElementById('crop-lines');
+    var template = container.querySelector('.crop-line-item').cloneNode(true);
+    template.querySelector('.crop-number').textContent = lineCount;
+    template.querySelector('.remove-line').classList.remove('d-none');
+    // Clear all inputs and selects in the cloned line
+    template.querySelectorAll('input, select').forEach(function(el) { el.value = ''; });
+    // Disable the new crop select and reset it
+    var newCropSelect = template.querySelector('.crop-type');
+    newCropSelect.disabled = true;
+    newCropSelect.innerHTML = '<option value="" disabled selected>Select Crop</option>';
+    // Re‑attach cascading logic to the new line
+    setupCropLine(template);
+    container.appendChild(template);
+    updateSummary();
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-line')) {
+        e.target.closest('.crop-line-item').remove();
+        updateSummary();
+    }
+});
+
+function updateSummary() {
+    var lines = document.querySelectorAll('.crop-line-item');
+    document.getElementById('crop-count').textContent = lines.length;
+    var total = 0;
+    lines.forEach(function(line) {
+        var qty = parseFloat(line.querySelector('input[name="quantity[]"]').value) || 0;
+        total += qty;
+    });
+    document.getElementById('total-qty').textContent = total + ' kg';
+}
+
+// --- Real-time quantity update (FIX) ---
+document.getElementById('crop-lines').addEventListener('input', function(e) {
+    if (e.target && e.target.name === 'quantity[]') {
+        updateSummary();
+    }
+});
+
+// --- Submit (prevents double‑submission) ---
+document.getElementById('submit-btn').addEventListener('click', async function() {
+    const btn = this;
+
+    // Prevent double clicks
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting…';
+
+    try {
+        // Validate location
+        var region = document.getElementById('region').value;
+        var district = document.getElementById('district').value;
+        var town = document.getElementById('town').value;
+        if (!region || !district || !town) {
+            alert('Please select your full delivery/pickup location (Region → District → Town).');
+            btn.disabled = false;
+            btn.innerHTML = 'Submit Harvest <i class="bi bi-plus-circle ms-1"></i>';
+            return;
+        }
+
+        // Validate crop lines
+        var lines = document.querySelectorAll('.crop-line-item');
+        if (lines.length === 0) {
+            alert('Please add at least one crop line.');
+            btn.disabled = false;
+            btn.innerHTML = 'Submit Harvest <i class="bi bi-plus-circle ms-1"></i>';
+            return;
+        }
+
+        var crops = [];
+        var isValid = true;
+        lines.forEach(function(line, index) {
+            var lineNum = index + 1;
+            var cropSelect = line.querySelector('.crop-type');
+            var qtyInput = line.querySelector('input[name="quantity[]"]');
+            var spoilageInput = line.querySelector('input[name="spoilage_hours[]"]');
+
+            if (!cropSelect.value) {
+                alert('Line ' + lineNum + ': Please select a crop category and name.');
+                isValid = false;
+                return;
+            }
+            var qty = parseFloat(qtyInput.value);
+            if (!qtyInput.value || isNaN(qty) || qty <= 0) {
+                alert('Line ' + lineNum + ': Quantity must be a positive number.');
+                isValid = false;
+                return;
+            }
+            var spoilage = parseFloat(spoilageInput.value);
+            if (!spoilageInput.value || isNaN(spoilage) || spoilage <= 0) {
+                alert('Line ' + lineNum + ': Spoilage time must be a positive number (hours).');
+                isValid = false;
+                return;
+            }
+
+            crops.push({
+                crop_type: cropSelect.value,
+                quantity_kg: qty,
+                spoilage_hours: spoilage
+            });
+        });
+
+        if (!isValid) {
+            btn.disabled = false;
+            btn.innerHTML = 'Submit Harvest <i class="bi bi-plus-circle ms-1"></i>';
+            return;
+        }
+
+        var locationLabel = document.getElementById('location_label').value.trim();
+
+        var body = {
+            crops: crops,
+            region: region,
+            district: district,
+            town: town,
+            lat: parseFloat(document.getElementById('lat').value) || null,
+            lon: parseFloat(document.getElementById('lon').value) || null,
+            location_label: locationLabel
+        };
+
+        const resp = await fetch('/farmers/lots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        });
+
+        if (resp.ok) {
+            window.location.href = '{{ url_for("farmer_dashboard") }}';
+        } else {
+            const err = await resp.json();
+            alert('Error: ' + (err.detail || 'Submission failed'));
+            btn.disabled = false;
+            btn.innerHTML = 'Submit Harvest <i class="bi bi-plus-circle ms-1"></i>';
+        }
+    } catch (error) {
+        alert('An error occurred: ' + error.message);
+        btn.disabled = false;
+        btn.innerHTML = 'Submit Harvest <i class="bi bi-plus-circle ms-1"></i>';
+    }
+});
+
+// Initial summary
+updateSummary();
+</script>
+{% endblock %}

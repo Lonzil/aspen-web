@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if access_token %}
+    <meta name="access-token" content="{{ access_token }}">
+    {% endif %}
+    <title>ASPEN – Algorithmic Spoilage‑Prevention Engine</title>
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="{{ url_for('static', path='manifest.json') }}">
+    
+    <!-- iOS web‑app meta tags -->
+    <meta name="apple-mobile-web-app-title" content="ASPEN">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Primary favicon: SVG with dark‑mode support -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='img/favicon.svg') }}">
+    <!-- Fallback .ico for older browsers -->
+    <link rel="alternate icon" type="image/x-icon" href="{{ url_for('static', path='img/favicon.ico') }}">
+    <!-- Apple touch icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', path='img/apple-touch-icon.png') }}">
+    <!-- High‑res icons (also used by PWA manifest) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', path='img/icon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', path='img/icon-512.png') }}">
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons 1.11 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart.js 4.4 (for admin dashboard) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom Brand Styles -->
+    <style>
+        :root {
+            --forest: #1E4D2B;
+            --leaf: #2E7D32;
+            --harvest: #D97706;
+        }
+        .bg-forest { background-color: var(--forest) !important; }
+        .text-forest { color: var(--forest) !important; }
+        .btn-forest { 
+            background-color: var(--forest); 
+            border-color: var(--forest); 
+            color: #fff; 
+        }
+        .btn-forest:hover { 
+            background-color: #163d22; 
+            border-color: #163d22; 
+            color: #fff; 
+        }
+        .bg-leaf { background-color: var(--leaf) !important; }
+        .text-leaf { color: var(--leaf) !important; }
+        .btn-leaf {
+            background-color: var(--leaf);
+            border-color: var(--leaf);
+            color: #fff;
+        }
+        .btn-leaf:hover {
+            background-color: #236b28;
+            border-color: #236b28;
+            color: #fff;
+        }
+        .bg-harvest { background-color: var(--harvest) !important; }
+        .text-harvest { color: var(--harvest) !important; }
+
+        /* Outline brand button */
+        .btn-outline-forest {
+            background-color: transparent;
+            border-color: var(--forest);
+            color: var(--forest);
+        }
+        .btn-outline-forest:hover,
+        .btn-outline-forest:focus,
+        .btn-outline-forest:active {
+            background-color: var(--forest);
+            border-color: var(--forest);
+            color: #fff;
+        }
+
+        /* Ensure role/category checkboxes use brand colors when selected */
+        .btn-check:checked + .btn-outline-forest,
+        .btn-check:active + .btn-outline-forest {
+            background-color: var(--forest);
+            border-color: var(--forest);
+            color: #fff;
+        }
+
+        .btn-check:focus + .btn-outline-forest {
+            box-shadow: 0 0 0 0.25rem rgba(30, 77, 43, 0.25);
+        }
+        
+        body {
+            background-color: #F9FAFB;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        footer {
+            background-color: #1F2937;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+            margin-top: auto;
+        }
+        
+        footer a:hover {
+            color: #fff !important;
+        }
+        
+        .btn, .form-control, .form-select {
+            min-height: 48px;
+        }
+        
+        .form-control:focus, .form-select:focus, .btn:focus {
+            box-shadow: 0 0 0 0.25rem rgba(30, 77, 43, 0.25);
+            border-color: var(--forest);
+        }
+        
+        .flash-container {
+            position: relative;
+            z-index: 1020;
+        }
+        
+        .demo-banner {
+            border-radius: 0;
+            margin-bottom: 0;
+        }
+
+        /* Phone prefix styling */
+        .phone-prefix {
+            background-color: #f8f9fa;
+            border-right: none;
+        }
+
+        /* Notification dropdown styling */
+        .notification-menu {
+            min-width: 320px;
+            max-width: 90vw;
+        }
+        .notification-item.unread {
+            background-color: rgba(46, 125, 50, 0.06);
+            font-weight: 500;
+        }
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+        .notification-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    {% set unread_count = unread_count|default(0) %}
+    {% set latest_notifications = latest_notifications|default([]) %}
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-forest sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="
+                {% if current_user %}
+                    {% if current_user.role == 'farmer' %}{{ url_for('farmer_dashboard') }}
+                    {% elif current_user.role == 'vendor' %}{{ url_for('vendor_dashboard') }}
+                    {% elif current_user.role == 'admin' %}{{ url_for('dashboard') }}
+                    {% else %}{{ url_for('landing_page') }}{% endif %}
+                {% else %}
+                    {{ url_for('landing_page') }}
+                {% endif %}
+            ">
+                <img src="{{ url_for('static', path='img/logo_compact_light.svg') }}" alt="ASPEN" height="36" class="d-inline-block align-text-top">
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user and current_user.role == 'farmer' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('farmer_dashboard') }}">
+                                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('farmer_add_lot') }}">
+                                <i class="bi bi-plus-circle me-1"></i>List Produce
+                            </a>
+                        </li>
+                    {% elif current_user and current_user.role == 'vendor' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('vendor_dashboard') }}">
+                                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('vendor_add_order') }}">
+                                <i class="bi bi-plus-circle me-1"></i>Place Order
+                            </a>
+                        </li>
+                    {% elif current_user and current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('sms_log') }}">
+                                <i class="bi bi-chat-dots me-1"></i>SMS Log
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('import_export_page') }}">
+                                <i class="bi bi-file-earmark-arrow-up me-1"></i>Import/Export
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav align-items-lg-center">
+                    {% if current_user %}
+                        <li class="nav-item dropdown me-lg-2">
+                            <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell"></i>
+                                {% if unread_count > 0 %}
+                                    <span class="badge bg-danger rounded-pill" id="notification-badge">{{ unread_count }}</span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end notification-menu" aria-labelledby="notificationDropdown">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Notifications</span>
+                                    {% if unread_count > 0 %}
+                                        <button class="btn btn-sm btn-link p-0 text-forest" id="mark-all-read">Mark all read</button>
+                                    {% endif %}
+                                </li>
+                                {% for notif in latest_notifications %}
+                                    <li>
+                                        <a class="dropdown-item notification-item {% if not notif.is_read %}unread{% endif %}" 
+                                           href="#" data-notification-id="{{ notif.id }}">
+                                            <div class="d-flex align-items-start py-1">
+                                                <span class="notification-badge-dot bg-{{ notif.type.value }} me-2 mt-1"></span>
+                                                <div>
+                                                    <div class="small">{{ notif.message }}</div>
+                                                    <small class="text-muted">{{ notif.created_at.strftime('%H:%M') if notif.created_at else '' }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li><span class="dropdown-item text-muted">No notifications</span></li>
+                                {% endfor %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-center" href="{{ url_for('all_notifications_page') }}">
+                                        View all
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" 
+                               data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle me-1"></i>
+                                {{ current_user.name }}
+                                <span class="badge bg-light text-forest ms-1">{{ current_user.role | capitalize }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('profile_page') }}">
+                                        <i class="bi bi-gear me-2"></i>Profile
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login_page') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register_page') }}">
+                                <i class="bi bi-person-plus me-1"></i>Register
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DEMO MODE BANNER -->
+    {% if config.DEMO_MODE %}
+    <div class="alert alert-warning text-center demo-banner mb-0" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>[DEMO MODE]</strong> SMS and sensitive operations are simulated. 
+        Verification codes appear on‑screen.
+    </div>
+    {% endif %}
+
+    <!-- FLASH MESSAGES -->
+    <div class="flash-container">
+        {% if flash_messages %}
+            {% for category, message in flash_messages %}
+                <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} 
+                            alert-dismissible fade show m-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <p class="mb-1">
+                <a href="{{ url_for('about_page') }}" class="text-white-50 text-decoration-none me-3">
+                    <i class="bi bi-info-circle me-1"></i>About Us
+                </a>
+                <a href="{{ url_for('support_page') }}" class="text-white-50 text-decoration-none me-3">
+                    <i class="bi bi-question-circle me-1"></i>Contact Us
+                </a>
+                <a href="/terms" class="text-white-50 text-decoration-none me-3">
+                    <i class="bi bi-file-text me-1"></i>Terms of Service
+                </a>
+                <a href="/privacy" class="text-white-50 text-decoration-none">
+                    <i class="bi bi-shield-lock me-1"></i>Privacy Policy
+                </a>
+            </p>
+            <p class="mb-0 small">&copy; 2026 ASPEN – KNUST CS Mini‑Project | v1.0.0</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Shared JavaScript utilities -->
+    <script>
+        function formatPhoneInput(input) {
+            var digits = input.value.replace(/\D/g, '');
+            if (digits.length > 0 && digits[0] !== '0') digits = '';
+            digits = digits.substring(0, 10);
+            var formatted = digits;
+            if (digits.length > 3) formatted = digits.substring(0, 3) + ' ' + digits.substring(3);
+            if (digits.length > 6) formatted = digits.substring(0, 3) + ' ' + digits.substring(3, 6) + ' ' + digits.substring(6);
+            input.value = formatted;
+            var rawField = document.getElementById(input.dataset.rawField);
+            if (rawField) rawField.value = digits;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    var closeBtn = alert.querySelector('.btn-close');
+                    if (closeBtn) closeBtn.click();
+                }, 5000);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.notification-item[data-notification-id]').forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const notificationId = this.getAttribute('data-notification-id');
+                    fetch('/notifications/' + notificationId + '/read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include'
+                    })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            this.classList.remove('unread');
+                            const badge = document.getElementById('notification-badge');
+                            if (badge) {
+                                const current = parseInt(badge.textContent) || 0;
+                                const newCount = Math.max(0, current - 1);
+                                if (newCount === 0) badge.remove();
+                                else badge.textContent = newCount;
+                            }
+                        }
+                    }.bind(this))
+                    .catch(function(err) { console.error(err); });
+                });
+            });
+
+            const markAllBtn = document.getElementById('mark-all-read');
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    fetch('/notifications/read-all', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include'
+                    })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            document.querySelectorAll('.notification-item.unread').forEach(function(el) {
+                                el.classList.remove('unread');
+                            });
+                            const badge = document.getElementById('notification-badge');
+                            if (badge) badge.remove();
+                        }
+                    })
+                    .catch(function(err) { console.error(err); });
+                });
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+{% set form_data = form_data|default({}) %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="text-center text-forest fw-bold mb-3">Log In to ASPEN</h4>
+                    <p class="text-center text-muted small mb-4">Enter your credentials to access your dashboard</p>
+
+                    <form method="POST" action="{{ url_for('login_post') }}" autocomplete="off" id="login-form">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label fw-bold small">
+                                <i class="bi bi-phone me-1"></i>Phone Number
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text phone-prefix d-flex align-items-center" style="background-color: #f8f9fa; border-right: none; padding: 0.375rem 0.75rem;">
+                                    <img src="{{ url_for('static', path='img/ghana-flag.png') }}" alt="Ghana flag" style="width: 22px; height: 16px; object-fit: cover; margin-right: 6px;">
+                                    <span style="line-height: 1;">+233</span>
+                                </span>
+                                <input type="tel" name="phone_display" id="phone"
+                                       class="form-control"
+                                       placeholder="0XX XXX XXXX"
+                                       maxlength="12"
+                                       inputmode="numeric"
+                                       pattern="0[0-9]{2} [0-9]{3} [0-9]{4}"
+                                       data-raw-field="phone_raw"
+                                       oninput="formatPhoneInput(this)"
+                                       autocomplete="off" required>
+                                <input type="hidden" name="phone" id="phone_raw" value="{{ form_data.get('phone', '') }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label fw-bold small">
+                                <i class="bi bi-lock me-1"></i>Password
+                            </label>
+                            <div class="input-group">
+                                <input type="password" name="password" id="password"
+                                       class="form-control"
+                                       autocomplete="current-password"
+                                       required>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword('password')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="remember" name="remember" value="true"
+                                       {% if form_data.get('remember') %}checked{% endif %}>
+                                <label class="form-check-label small" for="remember">Remember me</label>
+                            </div>
+                            <a href="{{ url_for('forgot_password_page') }}" class="text-forest fw-bold small">Forgot Password?</a>
+                        </div>
+
+                        <button type="submit" class="btn btn-forest w-100 mb-3">
+                            Log In <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </form>
+
+                    <p class="text-center text-muted small mb-2">
+                        By continuing, you agree to our
+                        <a href="/terms" target="_blank" class="text-forest fw-bold">Terms of Service</a> and
+                        <a href="/privacy" target="_blank" class="text-forest fw-bold">Privacy Policy</a>.
+                    </p>
+
+                    <hr>
+                    <p class="text-center small mb-0">
+                        Don't have an account?
+                        <a href="{{ url_for('register_page') }}" class="text-forest fw-bold">Register</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword(id) {
+    var field = document.getElementById(id);
+    var icon = field.nextElementSibling.querySelector('i');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
+// Repopulate display phone from hidden raw value (if present)
+(function() {
+    var rawPhone = document.getElementById('phone_raw').value;
+    if (rawPhone && rawPhone.length === 10) {
+        var formatted = rawPhone.slice(0, 3) + ' ' + rawPhone.slice(3, 6) + ' ' + rawPhone.slice(6);
+        document.getElementById('phone').value = formatted;
+    }
+})();
+</script>
+{% endblock %}

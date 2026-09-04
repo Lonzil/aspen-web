@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 70" width="200" height="70">
+  <defs>
+    <style>
+      .wordmark { font-family: system-ui, -apple-system, sans-serif; font-weight: 700; font-size: 28px; fill: #FFFFFF; }
+      .tagline  { font-family: system-ui, -apple-system, sans-serif; font-weight: 400; font-size: 0px; fill: ; }
+    </style>
+  </defs>
+  
+    <g transform="translate(5, 5)">
+      <!-- Canopy -->
+      <polygon points="30,2 58,50 2,50" fill="#2E7D32" />
+      <!-- Circuit veins -->
+      <line x1="30" y1="18" x2="30" y2="42" stroke="#D97706" stroke-width="2.5" />
+      <line x1="14" y1="34" x2="46" y2="34" stroke="#D97706" stroke-width="2.5" />
+      <!-- Trunk -->
+      <rect x="22" y="50" width="16" height="15" fill="#D97706" rx="2" />
+    </g>
+    
+  <text x="75" y="48" class="wordmark">ASPEN</text>
+</svg>

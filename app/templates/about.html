@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <!-- Page Header -->
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-forest">About ASPEN</h1>
+        <p class="lead text-muted">Algorithmic Spoilage‑Prevention Engine – A KNUST CS Mini‑Project</p>
+    </div>
+
+    <!-- The Problem & Our Solution -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <h3 class="fw-bold mb-3"><i class="bi bi-lightbulb me-2 text-harvest"></i>The Problem</h3>
+            <p class="text-muted">
+                In Ghana, a significant portion of harvested perishable crops spoils at the farm level before ever reaching a buyer. 
+                This post‑harvest loss is not due to a lack of demand – restaurants, processors, and retailers exist – but because of a 
+                critical coordination failure. Traditional marketplaces treat all produce equally, ignore the ticking spoilage clock, 
+                and rely on manual searching.
+            </p>
+            <h3 class="fw-bold mb-3 mt-5"><i class="bi bi-check-circle me-2 text-leaf"></i>Our Solution</h3>
+            <p class="text-muted">
+                ASPEN is a full‑stack web application that algorithmically minimizes post‑harvest food waste by automatically matching 
+                perishable agricultural supply with nearby demand, giving priority to produce that is closest to spoiling. It models 
+                each crop's allocation as a minimum‑cost flow problem, using graph theory and operations research to save food before 
+                time runs out.
+            </p>
+        </div>
+    </div>
+
+    <!-- The Team -->
+    <div class="mb-5">
+        <h3 class="text-center fw-bold mb-4">Meet the Team</h3>
+        <div class="row g-4 justify-content-center">
+            <!-- Team Member 1 -->
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-4">
+                        <img src="{{ url_for('static', path='img/amos.jpeg') }}" alt="Antiedu Amos Akosah" 
+                             class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover; background-color: #e9ecef;">
+                        <h5 class="fw-bold">Antiedu Amos Akosah</h5>
+                        <p class="text-muted small">Third Year Computer Science Student</p>
+                        <span class="badge bg-forest mb-3">Engine & Data Owner</span>
+                        <p class="small text-muted">
+                            Designed and implemented the core matching engine, including the minimum‑cost flow solver, 
+                            feasibility filters, freshness‑penalty cost functions, and the two‑phase dummy‑node sizing algorithm. 
+                            Responsible for engine integration, API testing, and performance benchmarking.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <!-- Team Member 2 -->
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center p-4">
+                        <img src="{{ url_for('static', path='img/gabriel.jpeg') }}" alt="Gabriel Antwi" 
+                             class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover; background-color: #e9ecef;">
+                        <h5 class="fw-bold">Gabriel Antwi</h5>
+                        <p class="text-muted small">Third Year Computer Science Student</p>
+                        <span class="badge bg-leaf mb-3">API & Interface Owner</span>
+                        <p class="small text-muted">
+                            Built the FastAPI backend, database models, authentication system, role‑based access control, 
+                            SMS and geocoding services, background schedulers, and the responsive Jinja2/Bootstrap frontend. 
+                            Led deployment, documentation, and system testing.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technology Stack -->
+    <div class="mb-5">
+        <h3 class="text-center fw-bold mb-4">Technology Stack</h3>
+        <div class="row g-3 justify-content-center">
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-filetype-py fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">Python 3.11+</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-hdd-stack fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">FastAPI</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-database fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">SQLModel / SQLite</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-diagram-3 fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">NetworkX</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-file-code fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">Jinja2</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-bootstrap fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">Bootstrap 5</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-graph-up fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">Chart.js</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-3 text-center">
+                <div class="p-3 bg-white shadow-sm rounded">
+                    <i class="bi bi-geo-alt fs-1 text-forest"></i>
+                    <p class="fw-bold small mb-0 mt-2">Geopy / Haversine</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acknowledgments -->
+    <div class="text-center bg-light p-4 rounded">
+        <h5 class="fw-bold mb-2">Acknowledgments</h5>
+        <p class="text-muted small mb-0">
+            Department of Computer Science<br>
+            Kwame Nkrumah University of Science and Technology (KNUST)<br>
+            Year 3 Mini‑Project &ndash; 2026
+        </p>
+    </div>
+</div>
+{% endblock %}

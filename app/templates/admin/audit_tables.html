@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-table me-1"></i>Read‑Only Access</small>
+            <h2 class="fw-bold text-dark">Audit Tables</h2>
+            <p class="text-muted">Inspect all supply lots, demand orders, and matches with status and date filters.</p>
+        </div>
+        <a href="/admin/dashboard" class="btn btn-outline-forest">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="auditTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="lots-tab" data-bs-toggle="tab" data-bs-target="#lots-pane" type="button" role="tab" aria-controls="lots-pane" aria-selected="true">
+                <i class="bi bi-box-seam me-1"></i>Supply Lots ({{ lots|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button" role="tab" aria-controls="orders-pane" aria-selected="false">
+                <i class="bi bi-cart me-1"></i>Demand Orders ({{ orders|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="matches-tab" data-bs-toggle="tab" data-bs-target="#matches-pane" type="button" role="tab" aria-controls="matches-pane" aria-selected="false">
+                <i class="bi bi-diagram-3 me-1"></i>Matches ({{ matches|length }})
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="auditTabsContent">
+        <!-- Supply Lots Tab -->
+        <div class="tab-pane fade show active" id="lots-pane" role="tabpanel" aria-labelledby="lots-tab">
+            <!-- Filters -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Status</label>
+                            <select id="lots-status" class="form-select form-select-sm">
+                                <option value="all">All</option>
+                                <option value="Open">Open</option>
+                                <option value="Matched">Matched</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Spoiled">Spoiled</option>
+                                <option value="Disputed">Disputed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">From</label>
+                            <input type="date" id="lots-from" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">To</label>
+                            <input type="date" id="lots-to" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button class="btn btn-sm btn-forest" onclick="applyFilter('lots')"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearFilter('lots')"><i class="bi bi-x-circle me-1"></i>Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Crop</th>
+                                <th>Qty (kg)</th>
+                                <th>Farmer</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lots-body">
+                            {% for lot in lots %}
+                            <tr data-status="{{ lot.status }}" data-date="{{ lot.created_at.isoformat() if lot.created_at else '' }}">
+                                <td>{{ lot.id }}</td>
+                                <td><strong>{{ lot.crop_type|capitalize }}</strong></td>
+                                <td>{{ lot.quantity_kg }}</td>
+                                <td>{{ lot.farmer.name if lot.farmer else '—' }}</td>
+                                <td><span class="badge bg-secondary">{{ lot.status }}</span></td>
+                                <td>{{ lot.created_at.strftime('%Y-%m-%d %H:%M') if lot.created_at else '—' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr id="lots-empty">
+                                <td colspan="6" class="text-center text-muted py-4">No supply lots found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demand Orders Tab -->
+        <div class="tab-pane fade" id="orders-pane" role="tabpanel" aria-labelledby="orders-tab">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Status</label>
+                            <select id="orders-status" class="form-select form-select-sm">
+                                <option value="all">All</option>
+                                <option value="Open">Open</option>
+                                <option value="Matched">Matched</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Disputed">Disputed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">From</label>
+                            <input type="date" id="orders-from" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">To</label>
+                            <input type="date" id="orders-to" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button class="btn btn-sm btn-forest" onclick="applyFilter('orders')"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearFilter('orders')"><i class="bi bi-x-circle me-1"></i>Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Crop</th>
+                                <th>Qty (kg)</th>
+                                <th>Min Shelf Life (h)</th>
+                                <th>Vendor</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-body">
+                            {% for order in orders %}
+                            <tr data-status="{{ order.status }}" data-date="{{ order.created_at.isoformat() if order.created_at else '' }}">
+                                <td>{{ order.id }}</td>
+                                <td><strong>{{ order.crop_type|capitalize }}</strong></td>
+                                <td>{{ order.quantity_kg }}</td>
+                                <td>{{ order.min_shelf_life_h }}</td>
+                                <td>{{ order.vendor.name if order.vendor else '—' }}</td>
+                                <td><span class="badge bg-secondary">{{ order.status }}</span></td>
+                                <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr id="orders-empty">
+                                <td colspan="7" class="text-center text-muted py-4">No demand orders found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matches Tab -->
+        <div class="tab-pane fade" id="matches-pane" role="tabpanel" aria-labelledby="matches-tab">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Status</label>
+                            <select id="matches-status" class="form-select form-select-sm">
+                                <option value="all">All</option>
+                                <option value="Matched">Matched</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Disputed">Disputed</option>
+                                <option value="Expired">Expired</option>
+                                <option value="Declined">Declined</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">From</label>
+                            <input type="date" id="matches-from" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">To</label>
+                            <input type="date" id="matches-to" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button class="btn btn-sm btn-forest" onclick="applyFilter('matches')"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearFilter('matches')"><i class="bi bi-x-circle me-1"></i>Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Supply Lot</th>
+                                <th>Demand Order</th>
+                                <th>Crop</th>
+                                <th>Qty (kg)</th>
+                                <th>Distance (km)</th>
+                                <th>Priority</th>
+                                <th>Farmer</th>
+                                <th>Vendor</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matches-body">
+                            {% for m in matches %}
+                            <tr data-status="{{ m.status }}" data-date="{{ m.created_at.isoformat() if m.created_at else '' }}">
+                                <td>{{ m.id }}</td>
+                                <td>{{ m.supply_lot_id }}</td>
+                                <td>{{ m.demand_order_id }}</td>
+                                <td>
+                                    {% if m.supply_lot %}
+                                        <strong>{{ m.supply_lot.crop_type|capitalize }}</strong>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>{{ m.quantity_kg }}</td>
+                                <td>{{ m.distance_km }}</td>
+                                <td>{{ m.priority_score }}</td>
+                                <td>{{ m.supply_lot.farmer.name if m.supply_lot and m.supply_lot.farmer else '—' }}</td>
+                                <td>{{ m.demand_order.vendor.name if m.demand_order and m.demand_order.vendor else '—' }}</td>
+                                <td><span class="badge bg-secondary">{{ m.status }}</span></td>
+                                <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '—' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr id="matches-empty">
+                                <td colspan="11" class="text-center text-muted py-4">No matches found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function applyFilter(tableId) {
+    const status = document.getElementById(`${tableId}-status`).value;
+    const from = document.getElementById(`${tableId}-from`).value;
+    const to = document.getElementById(`${tableId}-to`).value;
+
+    const body = document.getElementById(`${tableId}-body`);
+    if (!body) return;
+
+    body.querySelectorAll('tr').forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        const rowDate = row.getAttribute('data-date');
+        let show = true;
+
+        if (status !== 'all' && rowStatus !== status) show = false;
+
+        if (from && rowDate) {
+            const fromDate = new Date(from);
+            const currentDate = new Date(rowDate);
+            if (currentDate < fromDate) show = false;
+        }
+
+        if (to && rowDate) {
+            const toDate = new Date(to);
+            toDate.setDate(toDate.getDate() + 1); // inclusive
+            const currentDate = new Date(rowDate);
+            if (currentDate >= toDate) show = false;
+        }
+
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function clearFilter(tableId) {
+    document.getElementById(`${tableId}-status`).value = 'all';
+    document.getElementById(`${tableId}-from`).value = '';
+    document.getElementById(`${tableId}-to`).value = '';
+    applyFilter(tableId);
+}
+</script>
+{% endblock %}

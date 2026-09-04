@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-forest text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold">Stop Food Waste Before It Happens</h1>
+                <p class="lead my-4">
+                    ASPEN uses intelligent algorithms to connect farmers with buyers, 
+                    prioritizing produce closest to spoiling.
+                </p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{{ url_for('register_page') }}" class="btn btn-light btn-lg">
+                        <i class="bi bi-person-plus me-2"></i>Get Started
+                    </a>
+                    <a href="{{ url_for('about_page') }}" class="btn btn-light btn-lg">
+                        <i class="bi bi-info-circle me-2"></i>Learn More
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6 d-none d-lg-block text-center">
+                <img src="{{ url_for('static', path='img/logo_full_light.svg') }}" alt="ASPEN – Algorithmic Spoilage‑Prevention Engine" class="img-fluid" style="max-height: 350px;">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-5">How ASPEN Works</h2>
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div class="bg-white p-4 rounded shadow-sm h-100">
+                    <i class="bi bi-basket fs-1 text-forest"></i>
+                    <h5 class="mt-3 fw-bold">1. Farmers List Their Harvest</h5>
+                    <p class="text-muted">Farmers enter crop details, quantity, and spoilage time via a simple interface.</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="bg-white p-4 rounded shadow-sm h-100">
+                    <i class="bi bi-cart fs-1 text-leaf"></i>
+                    <h5 class="mt-3 fw-bold">2. Vendors Place Orders</h5>
+                    <p class="text-muted">Restaurants, processors, and retailers specify their needs and minimum shelf life.</p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="bg-white p-4 rounded shadow-sm h-100">
+                    <i class="bi bi-lightbulb fs-1 text-harvest"></i>
+                    <h5 class="mt-3 fw-bold">3. ASPEN Matches Them</h5>
+                    <p class="text-muted">Our engine prioritizes urgent produce and finds the closest feasible vendor automatically.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Key Features -->
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-5">Why Choose ASPEN?</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-graph-up-arrow fs-1 text-leaf"></i>
+                        <h6 class="fw-bold mt-3">Spoilage‑Priority Matching</h6>
+                        <p class="small text-muted">Urgent produce gets matched first, reducing waste automatically.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-geo-alt fs-1 text-forest"></i>
+                        <h6 class="fw-bold mt-3">GPS & Location‑Aware</h6>
+                        <p class="small text-muted">Matches based on real distance and travel time, not just proximity.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clock-history fs-1 text-harvest"></i>
+                        <h6 class="fw-bold mt-3">Real‑Time Shelf Life Tracking</h6>
+                        <p class="small text-muted">Countdown timers and automated expiry prevent spoiled deliveries.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-cpu fs-1 text-leaf"></i>
+                        <h6 class="fw-bold mt-3">Transparent Explainability</h6>
+                        <p class="small text-muted">Every match shows exactly why it was chosen – no black boxes.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-5">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-3">Ready to Reduce Post‑Harvest Loss?</h2>
+        <p class="lead text-muted mb-4">Join Ghana's agricultural logistics ecosystem today.</p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="{{ url_for('register_page') }}" class="btn btn-forest btn-lg">
+                <i class="bi bi-tree me-2"></i>Join as a Farmer
+            </a>
+            <a href="{{ url_for('register_page') }}" class="btn btn-forest btn-lg">
+                <i class="bi bi-shop me-2"></i>Join as a Vendor
+            </a>
+        </div>
+        <p class="text-muted small mt-3">
+            Already have an account? <a href="{{ url_for('login_page') }}" class="text-forest fw-bold">Log In</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

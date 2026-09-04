@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold text-dark">Vendor Procurement Dashboard</h2>
+            <p class="text-muted">Manage your produce orders, track matches, and monitor logistics status in real‑time.</p>
+        </div>
+        <div>
+            <div class="input-group me-2 d-inline-flex" style="width: 250px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search orders..." id="order-search">
+            </div>
+            <div class="btn-group me-2">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-funnel me-1"></i>Filter
+                </button>
+                <ul class="dropdown-menu" id="filter-dropdown">
+                    <li><a class="dropdown-item filter-option" href="#" data-status="all">All</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="Open">Open</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="Matched">Matched</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="Confirmed">Confirmed</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="In Transit">In Transit</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="Closed">Closed</a></li>
+                    <li><a class="dropdown-item filter-option" href="#" data-status="Disputed">Disputed</a></li>
+                </ul>
+            </div>
+            <a href="{{ url_for('vendor_history') }}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-clock-history me-1"></i>History
+            </a>
+            <a href="{{ url_for('vendor_add_order') }}" class="btn btn-forest"><i class="bi bi-plus-circle me-1"></i>Place New Order</a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-top border-primary shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <i class="bi bi-clipboard text-primary fs-4"></i>
+                        <span class="badge bg-primary">LIVE STATUS</span>
+                    </div>
+                    <h4 class="fw-bold mt-2">{{ active_orders|default(0) }}</h4>
+                    <small class="text-muted">ACTIVE ORDERS</small>
+                    <p class="small text-muted mb-0">Awaiting farmer matches</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-top border-leaf shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <i class="bi bi-check-circle text-leaf fs-4"></i>
+                        <span class="badge bg-leaf">LIVE STATUS</span>
+                    </div>
+                    <h4 class="fw-bold mt-2">{{ matched_orders|default(0) }}</h4>
+                    <small class="text-muted">MATCHED / CONFIRMED / TRANSIT</small>
+                    <p class="small text-muted mb-0">In progress</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-top border-secondary shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <i class="bi bi-box-seam text-secondary fs-4"></i>
+                        <span class="badge bg-secondary">LIVE STATUS</span>
+                    </div>
+                    <h4 class="fw-bold mt-2">{{ received_today|default("0 kg") }}</h4>
+                    <small class="text-muted">RECEIVED TODAY</small>
+                    <p class="small text-muted mb-0">Successfully fulfilled</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Procurement Orders Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">Procurement Orders</h5>
+            <small class="text-muted"><i class="bi bi-clock me-1"></i><span id="update-timer">Updated just now</span></small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="orders-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Crop</th>
+                        <th>Qty (kg)</th>
+                        <th>Min Shelf Life (h)</th>
+                        <th class="text-center">Shelf Life (h)</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody">
+                    {% for order in orders %}
+                    {% set status_label = order.status %}
+                    {% set shelf_text = order.remaining_hours if order.remaining_hours is not none else '—' %}
+                    {% set searchable = order.crop_type ~ ' ' ~ order.quantity_kg|string ~ ' ' ~ order.min_shelf_life_h|string ~ ' ' ~ status_label %}
+                    <tr data-crop="{{ order.crop_type|lower }}" data-status="{{ order.status }}" data-search-text="{{ searchable|lower }}">
+                        <td>
+                            <strong>{{ order.crop_type|capitalize }}</strong>
+                        </td>
+                        <td>{{ order.quantity_kg }} kg</td>
+                        <td>{{ order.min_shelf_life_h }} h</td>
+                        <td class="text-center">
+                            {% if order.remaining_hours is not none %}
+                                {% if order.remaining_hours <= 0 %}
+                                    <span class="badge bg-danger">Expired</span>
+                                {% elif order.remaining_hours < 5 %}
+                                    <span class="badge bg-danger">{{ order.remaining_hours }} h</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ order.remaining_hours }} h</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted fw-bold">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if order.status == 'Open' %}
+                                <span class="badge bg-info">Open</span>
+                            {% elif order.status == 'Matched' %}
+                                <span class="badge bg-leaf">Matched</span>
+                            {% elif order.status == 'Confirmed' %}
+                                <span class="badge bg-success">Confirmed</span>
+                            {% elif order.status == 'In Transit' %}
+                                <span class="badge bg-warning text-dark">In Transit</span>
+                            {% elif order.status == 'Closed' %}
+                                <span class="badge bg-secondary">Closed</span>
+                            {% elif order.status == 'Disputed' %}
+                                <span class="badge bg-harvest text-dark">Disputed</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if order.status == 'Matched' and order.accept_deadline %}
+                                <span class="countdown badge bg-harvest text-dark" data-deadline="{{ order.accept_deadline.isoformat() }}">--</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-forest view-order-btn" 
+                                    data-order-id="{{ order.id }}">
+                                <i class="bi bi-eye me-1"></i>View
+                            </button>
+                            {% if order.status == 'Open' %}
+                            <button class="btn btn-sm btn-outline-danger delete-order-btn"
+                                    data-order-id="{{ order.id }}">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </button>
+                            {% endif %}
+                            {% if order.match_id and order.status == 'Matched' %}
+                                {% if not order.vendor_accepted %}
+                                <button class="btn btn-sm btn-leaf accept-btn" data-match-id="{{ order.match_id }}">Accept</button>
+                                <button class="btn btn-sm btn-outline-danger decline-btn" data-match-id="{{ order.match_id }}">Decline</button>
+                                {% else %}
+                                <span class="text-muted small">Accepted – waiting for farmer</span>
+                                {% endif %}
+                            {% elif order.status == 'In Transit' %}
+                                <button class="btn btn-sm btn-leaf receive-fresh-btn" data-match-id="{{ order.match_id }}">Received Fresh</button>
+                                <button class="btn btn-sm btn-outline-danger report-spoilt-btn" data-match-id="{{ order.match_id }}">Report Spoilt</button>
+                            {% elif order.status == 'Disputed' %}
+                                <span class="text-muted small">Under admin review</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="no-orders-row">
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            You have no active orders. 
+                            <a href="{{ url_for('vendor_add_order') }}" class="text-forest fw-bold">Place your first order</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Match Insight Panel (hidden by default) -->
+    <div id="match-insight" class="card border-leaf shadow-sm d-none">
+        <div class="card-header bg-leaf text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-cpu-fill me-2"></i>Why This Match?</span>
+            <span class="badge bg-white text-dark" id="match-priority">AI Score: 0/100</span>
+        </div>
+        <div class="card-body" id="match-details">
+            <!-- Filled by JavaScript -->
+        </div>
+        <div class="card-footer text-end">
+            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('match-insight').classList.add('d-none')">
+                <i class="bi bi-x-circle me-1"></i>Close Panel
+            </button>
+        </div>
+    </div>
+
+    <!-- Photo Upload Modal for Spoilt Report -->
+    <div class="modal fade" id="spoiltModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">Report Spoilt Produce</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Please upload a photo of the spoiled produce as evidence.</p>
+                    <input type="file" id="spoilt-photo" class="form-control" accept="image/jpeg, image/png" required>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-danger" id="submit-spoilt-btn">Submit Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal (generic) -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="confirmModalLabel">Confirm</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody">
+                    Are you sure?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm" id="confirmModalBtn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Info Card -->
+    <div class="row g-3 mt-2">
+        <div class="col-12">
+            <div class="card bg-leaf text-white border-leaf text-center">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-info-circle me-1"></i>PROACTIVE FULFILLMENT</h6>
+                    <p class="small mb-0">ASPEN automatically pairs your orders with the nearest available harvest. Accept matches quickly, confirm receipt promptly, or report spoilage with evidence.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PAGE_LOAD_TIME = new Date();
+setInterval(() => {
+    const elapsedMinutes = Math.floor((new Date() - PAGE_LOAD_TIME) / 1000 / 60);
+    const timerEl = document.getElementById('update-timer');
+    if (!timerEl) return;
+    let text;
+    if (elapsedMinutes < 1) text = 'Updated just now';
+    else if (elapsedMinutes < 60) text = `Updated ${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} ago`;
+    else if (elapsedMinutes < 1440) text = `Updated ${Math.floor(elapsedMinutes / 60)} hour${elapsedMinutes < 120 ? '' : 's'} ago`;
+    else text = `Updated ${Math.floor(elapsedMinutes / 1440)} day${elapsedMinutes < 2880 ? '' : 's'} ago`;
+    timerEl.textContent = text;
+}, 30000);
+
+let currentSearch = '';
+let currentFilter = 'all';
+let pendingMatchId = null;
+let pendingDeleteOrderId = null;
+let pendingMatchAction = null;
+
+document.getElementById('match-insight').addEventListener('click', function(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const matchId = btn.dataset.matchId;
+    if (!action || !matchId) return;
+
+    // All actions now go through confirmation (except maybe view, but view is handled elsewhere)
+    if (['accept', 'decline', 'receive-fresh', 'report-spoilt'].includes(action)) {
+        confirmMatchAction(action, matchId);
+    }
+});
+
+document.getElementById('spoiltModal').addEventListener('show.bs.modal', function () {
+    document.getElementById('spoilt-photo').value = '';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('order-search');
+    const filterOptions = document.querySelectorAll('.filter-option');
+    const tbody = document.getElementById('orders-tbody');
+    const noOrdersRow = document.getElementById('no-orders-row');
+
+    function applyFilters() {
+        const rows = tbody.querySelectorAll('tr');
+        let visibleCount = 0;
+        rows.forEach(row => {
+            if (row === noOrdersRow) return;
+            const searchText = row.getAttribute('data-search-text') || '';
+            const status = row.getAttribute('data-status') || '';
+            if (searchText.includes(currentSearch.toLowerCase()) && (currentFilter === 'all' || status === currentFilter)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        if (noOrdersRow) noOrdersRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+    }
+
+    searchInput.addEventListener('input', () => { currentSearch = searchInput.value.trim().toLowerCase(); applyFilters(); });
+    filterOptions.forEach(opt => opt.addEventListener('click', e => { e.preventDefault(); currentFilter = opt.getAttribute('data-status'); applyFilters(); }));
+
+    document.querySelectorAll('.view-order-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const orderId = btn.dataset.orderId;
+            try {
+                const resp = await fetch(`/vendors/orders/${orderId}`, { credentials: 'include' });
+                if (!resp.ok) { if (resp.status === 401 || resp.status === 403) { window.location.href = '/login'; return; } throw new Error('Failed'); }
+                const data = await resp.json();
+                if (data.status === 'Open') {
+                    showOpenOrderDetails(data);
+                    return;
+                }
+                const activeMatch = (data.matches || []).find(m => ['Matched','Confirmed','In Transit','Disputed','Closed'].includes(m.status));
+                if (!activeMatch) { showOpenOrderDetails(data); return; }
+                showMatchDetails(activeMatch);
+            } catch (e) { alert('Error: ' + e.message); }
+        });
+    });
+
+    document.querySelectorAll('.delete-order-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            pendingDeleteOrderId = btn.dataset.orderId;
+            const body = document.getElementById('confirmModalBody');
+            const confirmBtn = document.getElementById('confirmModalBtn');
+            body.innerHTML = 'Are you sure you want to delete this order? This action cannot be undone.';
+            confirmBtn.classList.add('btn-danger');
+            confirmBtn.textContent = 'Yes, Delete';
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        });
+    });
+
+    // Updated action buttons to require confirmation
+    document.querySelectorAll('.accept-btn').forEach(b => b.addEventListener('click', () => confirmMatchAction('accept', b.dataset.matchId)));
+    document.querySelectorAll('.decline-btn').forEach(b => b.addEventListener('click', () => confirmMatchAction('decline', b.dataset.matchId)));
+    document.querySelectorAll('.receive-fresh-btn').forEach(b => b.addEventListener('click', () => confirmMatchAction('receive-fresh', b.dataset.matchId)));
+    document.querySelectorAll('.report-spoilt-btn').forEach(b => b.addEventListener('click', () => confirmMatchAction('report-spoilt', b.dataset.matchId)));
+
+    document.getElementById('submit-spoilt-btn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('spoilt-photo');
+        if (!fileInput.files.length) { alert('Please select a photo.'); return; }
+        const formData = new FormData();
+        formData.append('photo', fileInput.files[0]);
+        try {
+            const resp = await fetch(`/matches/${pendingMatchId}/report-spoiled`, { method: 'POST', credentials: 'include', body: formData });
+            if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed'); } else { location.reload(); }
+        } catch (e) { alert('Network error: ' + e.message); }
+        bootstrap.Modal.getInstance(document.getElementById('spoiltModal')).hide();
+    });
+
+    document.getElementById('confirmModalBtn').addEventListener('click', async () => {
+        if (pendingMatchAction) {
+            const { action, matchId } = pendingMatchAction;
+            pendingMatchAction = null;
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            if (action === 'report-spoilt') {
+                // After confirmation, open photo upload modal
+                pendingMatchId = matchId;
+                const modal = new bootstrap.Modal(document.getElementById('spoiltModal'));
+                modal.show();
+            } else {
+                await executeMatchAction(action, matchId);
+            }
+            return;
+        }
+        if (pendingDeleteOrderId) {
+            try {
+                const resp = await fetch(`/vendors/orders/${pendingDeleteOrderId}`, { method: 'DELETE', credentials: 'include' });
+                if (resp.ok) location.reload();
+                else { const err = await resp.json(); alert(err.detail || 'Deletion failed'); }
+            } catch (err) { alert('Network error: ' + err.message); }
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            pendingDeleteOrderId = null;
+        }
+    });
+
+    function showOpenOrderDetails(data) {
+        const panel = document.getElementById('match-insight');
+        const headerSpan = panel.querySelector('.card-header span');
+        if (headerSpan) headerSpan.innerHTML = '<i class="bi bi-info-circle me-2"></i>Order Details';
+        document.getElementById('match-priority').textContent = '';
+
+        let resolutionNotice = '';
+        if (data.dispute_resolution) {
+            resolutionNotice = `
+                <div class="alert alert-warning small">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    <strong>Admin Resolution:</strong> ${data.dispute_resolution}
+                </div>`;
+        }
+
+        let html = `
+            ${resolutionNotice}
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle me-1"></i>
+                No active match found for this order yet. The engine will retry on the next run.
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6 class="fw-bold">Order Details</h6>
+                    <p><strong>Crop:</strong> ${data.crop_type ? data.crop_type.charAt(0).toUpperCase() + data.crop_type.slice(1) : 'N/A'}</p>
+                    <p><strong>Quantity:</strong> ${data.quantity_kg} kg</p>
+                    <p><strong>Min Shelf Life:</strong> ${data.min_shelf_life_h} h</p>
+                    <p><strong>Placed:</strong> ${data.created_at ? new Date(data.created_at).toLocaleDateString('en-GB') : 'N/A'}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-bold">Location</h6>
+                    <p><strong>Location:</strong> ${data.location_label || 'N/A'}</p>
+                    ${data.notes ? `<p><strong>Handling Instructions:</strong> ${data.notes}</p>` : ''}
+                </div>
+            </div>`;
+        document.getElementById('match-details').innerHTML = html;
+        panel.classList.remove('d-none');
+    }
+});
+
+function showMatchDetails(m) {
+    const panel = document.getElementById('match-insight');
+    const headerSpan = panel.querySelector('.card-header span');
+    if (headerSpan) headerSpan.innerHTML = '<i class="bi bi-cpu-fill me-2"></i>Why This Match?';
+    document.getElementById('match-priority').textContent = `AI Score: ${m.priority_score}/100`;
+
+    const minShelfDisplay = m.min_shelf_life_h
+        ? `${Number(m.min_shelf_life_h).toFixed(1)} h`
+        : 'N/A';
+
+    const leftHTML = `
+        <h6 class="fw-bold">Farmer & Logistics</h6>
+        <p><strong>Farmer:</strong> ${m.farmer_name || 'N/A'}</p>
+        <p><strong>Phone:</strong> ${m.farmer_phone || ''}</p>
+        <p><strong>Quantity:</strong> ${Number(m.quantity_kg).toFixed(1)} kg</p>
+        <p><strong>Distance:</strong> ${Number(m.distance_km).toFixed(1)} km</p>
+        <p><strong>Arrival Freshness:</strong> ${Number(m.arrival_freshness_h).toFixed(1)} h</p>
+        <p><strong>Minimum Required Shelf Life:</strong> ${minShelfDisplay}</p>`;
+
+    const rightHTML = `
+        <h6 class="fw-bold">Explainability</h6>
+        <ul class="list-unstyled">
+            <li><i class="bi bi-check-circle-fill text-leaf me-2"></i>Geographic proximity optimal</li>
+            <li><i class="bi bi-check-circle-fill text-leaf me-2"></i>Freshness window prioritized</li>
+            <li><i class="bi bi-check-circle-fill text-leaf me-2"></i>Lowest optimisation cost</li>
+            <li><i class="bi bi-check-circle-fill text-leaf me-2"></i>Urgent lot prioritised</li>
+        </ul>`;
+
+    let html;
+    if (m.status === 'Matched') {
+        html = `
+            <div class="row">
+                <div class="col-md-6">${leftHTML}</div>
+                <div class="col-md-6">${rightHTML}</div>
+            </div>`;
+    } else {
+        html = `
+            <div class="row">
+                <div class="col-12">${leftHTML}</div>
+            </div>`;
+    }
+
+    if (m.status === 'Matched') {
+        const deadline = m.accept_deadline ? new Date(m.accept_deadline) : null;
+        const deadlineStr = deadline ? deadline.toLocaleString('en-GB') : 'N/A';
+        const now = new Date();
+        const remainingMs = deadline ? deadline - now : 0;
+        const remainingMin = remainingMs > 0 ? Math.floor(remainingMs / 60000) : 0;
+
+        if (!m.farmer_accepted && !m.vendor_accepted) {
+            html += `
+            <div class="alert alert-warning small mt-3">
+                <i class="bi bi-clock me-1"></i>
+                <strong>Accept Deadline:</strong> ${deadlineStr}
+                <span class="countdown badge bg-harvest text-dark" data-deadline="${m.accept_deadline || ''}">--</span>
+            </div>
+            <div class="alert alert-danger small mt-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Action Required:</strong> Please accept or decline this match before the deadline.
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button class="btn btn-sm btn-outline-danger" data-action="decline" data-match-id="${m.match_id}">Decline Match</button>
+                <button class="btn btn-sm btn-leaf" data-action="accept" data-match-id="${m.match_id}">Accept</button>
+            </div>`;
+        } else if (!m.vendor_accepted && m.farmer_accepted) {
+            html += `
+            <div class="alert alert-info small mt-3">
+                <i class="bi bi-info-circle me-1"></i>
+                The farmer has accepted! You have until <strong>${deadlineStr}</strong> to accept.
+                <span class="countdown badge bg-harvest text-dark" data-deadline="${m.accept_deadline || ''}">--</span>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button class="btn btn-sm btn-outline-danger" data-action="decline" data-match-id="${m.match_id}">Decline Match</button>
+                <button class="btn btn-sm btn-leaf" data-action="accept" data-match-id="${m.match_id}">Accept</button>
+            </div>`;
+        } else if (m.vendor_accepted && !m.farmer_accepted) {
+            html += `
+            <div class="alert alert-success small mt-3">
+                <i class="bi bi-check-circle me-1"></i>
+                You accepted this match. Waiting for the farmer to accept.
+                <span class="countdown badge bg-harvest text-dark" data-deadline="${m.accept_deadline || ''}">--</span>
+            </div>`;
+        }
+    }
+
+    if (m.status === 'Confirmed') {
+        if (headerSpan) headerSpan.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirmed Match';
+        const confirmedAt = m.confirmed_at ? new Date(m.confirmed_at).toLocaleString('en-GB') : 'N/A';
+        const dispatchDeadline = m.dispatch_deadline ? new Date(m.dispatch_deadline) : null;
+        const deadlineStr = dispatchDeadline ? dispatchDeadline.toLocaleString('en-GB') : 'N/A';
+        const remainingMs = dispatchDeadline ? dispatchDeadline - new Date() : 0;
+        const remainingMin = remainingMs > 0 ? Math.floor(remainingMs / 60000) : 0;
+
+        html += `
+        <div class="alert alert-success small mt-3">
+            <i class="bi bi-check-circle me-1"></i>
+            Both parties accepted. Confirmed at: ${confirmedAt}
+        </div>
+        <div class="alert alert-warning small mt-2">
+            <i class="bi bi-clock me-1"></i>
+            <strong>Dispatch Deadline:</strong> ${deadlineStr}
+            ${remainingMin > 0 ? ` (${remainingMin} min remaining)` : ' (expired)'}
+        </div>
+        <p class="text-muted small mt-2">Waiting for the farmer to dispatch the produce.</p>`;
+    }
+
+    if (m.status === 'In Transit') {
+        if (headerSpan) headerSpan.innerHTML = '<i class="bi bi-truck me-2"></i>In Transit – Awaiting Delivery';
+        const dispatchedAt = m.dispatched_at ? new Date(m.dispatched_at).toLocaleString('en-GB') : 'N/A';
+        const deliveryDeadline = m.delivery_deadline ? new Date(m.delivery_deadline) : null;
+        const deliveryDeadlineStr = deliveryDeadline ? deliveryDeadline.toLocaleString('en-GB') : 'N/A';
+        const now = new Date();
+        const remainingMs = deliveryDeadline ? deliveryDeadline - now : 0;
+        const remainingMin = remainingMs > 0 ? Math.floor(remainingMs / 60000) : 0;
+
+        html += `
+        <div class="alert alert-info small mt-3">
+            <i class="bi bi-truck me-1"></i>
+            Produce is in transit. Inspect it upon delivery.
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <p><strong>Dispatched At:</strong> ${dispatchedAt}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Delivery Deadline:</strong> ${deliveryDeadlineStr}
+                ${remainingMin > 0 ? ` (${remainingMin} min remaining)` : ' (expired)'}</p>
+            </div>
+        </div>
+        <div class="alert alert-warning small mt-2">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            <strong>Action Required:</strong> Confirm fresh receipt or report spoilage with evidence before the deadline.
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="btn btn-sm btn-outline-danger" data-action="report-spoilt" data-match-id="${m.match_id}">Report Spoilt</button>
+            <button class="btn btn-sm btn-leaf" data-action="receive-fresh" data-match-id="${m.match_id}">Received Fresh</button>
+        </div>`;
+    }
+
+    if (m.status === 'Closed') {
+        const closedAt = m.closed_at ? new Date(m.closed_at).toLocaleString('en-GB') : 'N/A';
+        let closeType = 'Confirmed Fresh';
+        let closeMessage = 'This order has been completed successfully.';
+
+        if (m.dispute_resolution) {
+            closeType = 'Admin Rejection';
+            closeMessage = `Dispute resolved: ${m.dispute_resolution}`;
+        } else if (!m.recorded_shelf_life_at_receipt_h) {
+            closeType = 'Auto‑Closed';
+            closeMessage = 'This order was auto‑closed because the delivery deadline passed.';
+        }
+
+        if (headerSpan) headerSpan.innerHTML = `<i class="bi bi-check-circle me-2"></i>Closed – ${closeType}`;
+
+        html += `
+        <div class="alert alert-success small mt-3">
+            <i class="bi bi-check-circle me-1"></i>
+            ${closeMessage}
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <p><strong>Closed At:</strong> ${closedAt}</p>
+            </div>
+        </div>`;
+    }
+
+    if (m.status === 'Disputed') {
+        if (headerSpan) headerSpan.innerHTML = '<i class="bi bi-shield-exclamation me-2"></i>Disputed – Under Admin Review';
+        const recordedShelf = m.recorded_shelf_life_at_receipt_h !== null && m.recorded_shelf_life_at_receipt_h !== undefined
+            ? `${Number(m.recorded_shelf_life_at_receipt_h).toFixed(1)} h`
+            : 'N/A';
+        const photoLink = m.photo_url
+            ? `<a href="${m.photo_url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-image me-1"></i>View Photo Evidence</a>`
+            : '<span class="text-muted">No photo evidence provided</span>';
+
+        html += `
+        <div class="alert alert-warning small mt-3">
+            <i class="bi bi-shield-exclamation me-1"></i>
+            Your spoilage claim has been submitted and is under review by the admin.
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <p><strong>Recorded Shelf Life at Receipt:</strong> ${recordedShelf}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Evidence:</strong> ${photoLink}</p>
+            </div>
+        </div>`;
+    }
+
+    document.getElementById('match-details').innerHTML = html;
+    panel.classList.remove('d-none');
+}
+
+function confirmMatchAction(action, matchId) {
+    pendingMatchAction = { action, matchId };
+    const body = document.getElementById('confirmModalBody');
+    const confirmBtn = document.getElementById('confirmModalBtn');
+    // Remove any existing color classes
+    confirmBtn.classList.remove('btn-danger', 'btn-leaf', 'btn-forest');
+    if (action === 'accept') {
+        body.innerHTML = 'Are you sure you want to accept this match? Once accepted, you are committing to receive this produce.';
+        confirmBtn.classList.add('btn-leaf');
+        confirmBtn.textContent = 'Yes, Accept';
+    } else if (action === 'decline') {
+        body.innerHTML = 'Are you sure you want to decline this match? Your order will return to the open pool.';
+        confirmBtn.classList.add('btn-danger');
+        confirmBtn.textContent = 'Yes, Decline';
+    } else if (action === 'receive-fresh') {
+        body.innerHTML = 'Are you sure you want to confirm receipt of fresh produce? This will close the match.';
+        confirmBtn.classList.add('btn-leaf');
+        confirmBtn.textContent = 'Yes, Confirm Receipt';
+    } else if (action === 'report-spoilt') {
+        body.innerHTML = 'Are you sure you want to report spoilt produce? You will be required to upload a photo as evidence.';
+        confirmBtn.classList.add('btn-danger');
+        confirmBtn.textContent = 'Yes, Continue';
+    }
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+}
+
+async function executeMatchAction(action, matchId) {
+    let endpoint = `/matches/${matchId}/`;
+    if (action === 'accept') endpoint += 'accept';
+    else if (action === 'decline') endpoint += 'decline';
+    else if (action === 'receive-fresh') endpoint += 'receive-fresh';
+    else return;
+    try {
+        const resp = await fetch(endpoint, { method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include' });
+        if (resp.ok) location.reload();
+        else { const err = await resp.json(); alert(err.detail || 'Action failed'); }
+    } catch (e) { alert('Network error: ' + e.message); }
+}
+
+// ---------- Live countdown updater ----------
+function updateCountdowns() {
+    document.querySelectorAll('.countdown').forEach(el => {
+        const deadlineStr = el.getAttribute('data-deadline');
+        if (!deadlineStr) {
+            el.textContent = 'N/A';
+            return;
+        }
+        const deadline = new Date(deadlineStr).getTime();
+        const now = Date.now();
+        const diff = deadline - now;
+
+        if (diff <= 0) {
+            el.textContent = 'Expired';
+            el.classList.remove('bg-harvest', 'text-dark');
+            el.classList.add('bg-danger', 'text-white');
+        } else {
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            el.textContent = `${minutes}m ${seconds}s`;
+            el.classList.remove('bg-danger', 'text-white');
+            el.classList.add('bg-harvest', 'text-dark');
+        }
+    });
+}
+
+// Run immediately and then every second
+updateCountdowns();
+setInterval(updateCountdowns, 1000);
+</script>
+{% endblock %}

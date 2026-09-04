@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-shield-check me-1"></i>Root Administrator Access</small>
+            <h2 class="fw-bold text-dark">Logistics Dashboard</h2>
+            <p class="text-muted">Real-time matching engine diagnostics and agricultural supply-chain oversight.</p>
+        </div>
+        <div class="card shadow-sm p-3 text-end" style="min-width: 250px;">
+            <div class="d-flex justify-content-between align-items-center">
+                {% if stats.engine_status == 'HEALTHY' %}
+                <span class="text-success me-3"><i class="bi bi-circle-fill me-1 small"></i>Engine Healthy</span>
+                {% elif stats.engine_status == 'ERROR' %}
+                <span class="text-danger me-3"><i class="bi bi-circle-fill me-1 small"></i>Engine Error</span>
+                {% else %}
+                <span class="text-muted me-3"><i class="bi bi-circle-fill me-1 small"></i>Engine Ready</span>
+                {% endif %}
+                <small class="text-muted">Runtime: <span id="last-runtime">{{ stats.last_runtime }}</span></small>
+            </div>
+            <button id="run-engine-btn" class="btn btn-forest btn-lg w-100 mt-2">
+                <i class="bi bi-play-fill me-2"></i>Run Engine Now
+            </button>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted" id="last-run-time">Last run: {{ stats.last_run_time }}</small>
+                {% if stats.engine_status == 'HEALTHY' %}
+                <small class="text-success fw-bold"><i class="bi bi-activity me-1"></i>HEALTHY</small>
+                {% elif stats.engine_status == 'ERROR' %}
+                <small class="text-danger fw-bold"><i class="bi bi-activity me-1"></i>ERROR</small>
+                {% else %}
+                <small class="text-muted fw-bold"><i class="bi bi-activity me-1"></i>READY</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="row g-3 mb-4" id="metric-cards">
+        <!-- Total Listed (active supply) -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-stack text-muted fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Total Listed</small>
+                    <h4 class="fw-bold" id="total-listed">{{ stats.total_listed_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- Food Saved (all-time delivered) -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-heart-fill text-leaf fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Food Saved</small>
+                    <h4 class="fw-bold text-leaf" id="food-saved">{{ stats.food_saved_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- Matched Supply (from engine) -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-check-circle text-leaf fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Matched Supply</small>
+                    <h4 class="fw-bold text-leaf" id="total-matched">{{ stats.total_matched_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- Engine Waste (from engine) -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-exclamation-triangle text-danger fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Engine Waste</small>
+                    <h4 class="fw-bold text-danger" id="total-engine-waste">{{ stats.total_spoiled_engine_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- System Spoilage (lots in SPOILED state) -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-trash text-danger fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">System Spoilage</small>
+                    <h4 class="fw-bold text-danger" id="total-system-spoiled">{{ stats.total_spoiled_lots_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- Unmet Demand -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-graph-up text-harvest fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Unmet Demand</small>
+                    <h4 class="fw-bold text-harvest" id="total-unmet">{{ stats.total_unmet_kg if stats else 0 }}</h4>
+                    <small class="text-muted">kg</small>
+                </div>
+            </div>
+        </div>
+        <!-- Disputed Orders -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-shield-exclamation text-harvest fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Disputed Orders</small>
+                    <h4 class="fw-bold text-harvest" id="disputed-count">{{ stats.disputed_count if stats else 0 }}</h4>
+                    <small class="text-muted">pending review</small>
+                </div>
+            </div>
+        </div>
+        <!-- Flagged Vendors -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-flag text-danger fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Flagged Vendors</small>
+                    <h4 class="fw-bold text-danger" id="flagged-vendors-count">{{ stats.flagged_vendors_count if stats else 0 }}</h4>
+                    <small class="text-muted">suspicious accounts</small>
+                </div>
+            </div>
+        </div>
+        <!-- Success Rate -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-lightning text-leaf fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Success Rate</small>
+                    <h4 class="fw-bold" id="success-rate">{{ stats.success_rate_pct if stats else 0 }}%</h4>
+                    <small class="text-muted">Efficiency score</small>
+                </div>
+            </div>
+        </div>
+        <!-- Avg Distance -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-compass text-info fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Avg Distance</small>
+                    <h4 class="fw-bold" id="avg-distance">{{ stats.avg_distance_km if stats else 0 }} km</h4>
+                    <small class="text-muted">Logistics radius</small>
+                </div>
+            </div>
+        </div>
+        <!-- Avg Freshness -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-clock-history text-info fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Avg Freshness</small>
+                    <h4 class="fw-bold" id="avg-freshness">{{ stats.avg_arrival_freshness_h if stats else 0 }} h</h4>
+                    <small class="text-muted">Arrival condition</small>
+                </div>
+            </div>
+        </div>
+        <!-- Avg Cost -->
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-calculator text-info fs-4"></i>
+                    <small class="d-block text-muted text-uppercase">Avg Cost</small>
+                    <h4 class="fw-bold" id="avg-cost">{{ stats.avg_cost if stats else 0 }}</h4>
+                    <small class="text-muted">Optimisation score</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold">Matched Supply vs Unmatched Supply per Crop</h6>
+                    <p class="small text-muted">Volume comparison in Kilograms</p>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="spoilageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold">Cumulative Spoilage Prevention Rate</h6>
+                    <p class="small text-muted">Percentage of all-time listed food saved from waste (closed / listed)</p>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="successRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engine Run History -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Matching History</h6>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary me-1" onclick="location.reload()"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
+                <button class="btn btn-sm btn-outline-secondary" id="filter-date-toggle"><i class="bi bi-funnel me-1"></i>Filter by Date</button>
+            </div>
+        </div>
+        <div id="date-filter-container" class="card-body border-bottom d-none">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold mb-1">From</label>
+                    <input type="date" id="filter-date-from" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold mb-1">To</label>
+                    <input type="date" id="filter-date-to" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button class="btn btn-sm btn-forest" id="apply-date-filter"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                    <button class="btn btn-sm btn-outline-secondary" id="clear-date-filter"><i class="bi bi-x-circle me-1"></i>Clear</button>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Crop</th>
+                        <th>Supply</th>
+                        <th>Demand</th>
+                        <th>Matched Supply (kg)</th>
+                        <th>Unmatched Supply (kg)</th>
+                        <th>Unmet (kg)</th>
+                        <th>Runtime</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="engine-run-body">
+                    {% if recent_runs %}
+                        {% for run in recent_runs %}
+                        <tr data-date="{{ run.created_at.isoformat() if run.created_at else '' }}">
+                            <td>{{ run.created_at.strftime('%Y-%m-%d %H:%M') if run.created_at else '--' }}</td>
+                            <td><strong>{{ run.crop_type or 'All' }}</strong></td>
+                            <td>{{ run.supply_count }}</td>
+                            <td>{{ run.demand_count }}</td>
+                            <td class="text-leaf fw-bold">{{ run.matched_kg }}</td>
+                            <td class="text-danger">{{ run.waste_kg }}</td>
+                            <td class="text-harvest">{{ run.unmet_kg }}</td>
+                            <td class="text-muted">{{ (run.runtime_ms / 1000)|round(2) }}s</td>
+                            <td>
+                                {% if run.status == 'success' %}
+                                    <span class="badge bg-leaf">Success</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr id="no-run-history-row">
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                No engine runs yet. Click "Run Engine Now" to start.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            Showing <span id="visible-run-count">{{ recent_runs|length if recent_runs else 0 }}</span> of {{ recent_runs|length if recent_runs else 0 }} engine run logs
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="d-flex gap-3 flex-wrap">
+        <a href="/admin/sms-log" class="btn btn-outline-forest"><i class="bi bi-chat-dots me-1"></i>View SMS Log</a>
+        <a href="/admin/disputes" class="btn btn-outline-warning"><i class="bi bi-shield-exclamation me-1"></i>Manage Disputes</a>
+        <a href="/admin/flagged-vendors" class="btn btn-outline-danger"><i class="bi bi-flag me-1"></i>Flagged Vendors</a>
+        <a href="/admin/export-csv" class="btn btn-outline-secondary"><i class="bi bi-download me-1"></i>Export CSV</a>
+        <a href="/admin/import-export" class="btn btn-outline-secondary"><i class="bi bi-upload me-1"></i>Import JSON/CSV</a>
+        <a href="/admin/audit" class="btn btn-outline-secondary"><i class="bi bi-table me-1"></i>Audit Tables</a>
+        <a href="/docs" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i>System Documentation</a>
+    </div>
+
+    <!-- Performance Benchmark -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0"><i class="bi bi-speedometer me-2"></i>Performance Benchmark</h6>
+            <button id="run-benchmark-btn" class="btn btn-outline-forest btn-sm">
+                <i class="bi bi-play-fill me-2"></i>Run Benchmark
+            </button>
+        </div>
+        <div class="card-body d-none" id="benchmark-results">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Method</th>
+                            <th>Matched Supply (kg)</th>
+                            <th>Engine Waste (kg)</th>
+                            <th>Unmet Demand (kg)</th>
+                            <th>Avg Distance (km)</th>
+                            <th>Runtime</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Random Assignment</td>
+                            <td id="bm-random-matched">--</td>
+                            <td id="bm-random-waste">--</td>
+                            <td id="bm-random-unmet">--</td>
+                            <td id="bm-random-distance">--</td>
+                            <td id="bm-random-runtime">--</td>
+                        </tr>
+                        <tr>
+                            <td>Greedy Nearest Vendor</td>
+                            <td id="bm-greedy-matched">--</td>
+                            <td id="bm-greedy-waste">--</td>
+                            <td id="bm-greedy-unmet">--</td>
+                            <td id="bm-greedy-distance">--</td>
+                            <td id="bm-greedy-runtime">--</td>
+                        </tr>
+                        <tr>
+                            <td>ASPEN (Min-Cost Flow)</td>
+                            <td id="bm-aspen-matched">--</td>
+                            <td id="bm-aspen-waste">--</td>
+                            <td id="bm-aspen-unmet">--</td>
+                            <td id="bm-aspen-distance">--</td>
+                            <td id="bm-aspen-runtime">--</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Store chart data in hidden JSON script tags – avoids VS Code JS linter errors #}
+<script id="chart-crop-labels" type="application/json">{{ crop_labels|tojson }}</script>
+<script id="chart-matched-data" type="application/json">{{ matched_data|tojson }}</script>
+<script id="chart-spoiled-data" type="application/json">{{ spoiled_data|tojson }}</script>
+<script id="chart-run-labels" type="application/json">{{ run_labels|tojson }}</script>
+<script id="chart-success-rates" type="application/json">{{ success_rates|tojson }}</script>
+
+<script>
+// Read token from meta tag (injected by base.html) – no longer used for API calls
+const accessTokenMeta = document.querySelector('meta[name="access-token"]');
+const TOKEN = accessTokenMeta ? accessTokenMeta.content : '';
+
+// Read chart data from hidden script tags
+const cropLabels = JSON.parse(document.getElementById('chart-crop-labels').textContent);
+const matchedVals = JSON.parse(document.getElementById('chart-matched-data').textContent);
+const spoiledVals = JSON.parse(document.getElementById('chart-spoiled-data').textContent);
+const runLabels = JSON.parse(document.getElementById('chart-run-labels').textContent);
+const successRates = JSON.parse(document.getElementById('chart-success-rates').textContent);
+
+// ----------------------------------------------------------------------
+// Manual engine trigger
+// ----------------------------------------------------------------------
+document.getElementById('run-engine-btn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Running…';
+    try {
+        const resp = await fetch('/admin/run-engine', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.detail || 'Engine run failed');
+        }
+        const data = await resp.json();
+
+        if (data.message) {
+            const oldAlert = document.getElementById('engine-message-alert');
+            if (oldAlert) oldAlert.remove();
+            const alertDiv = document.createElement('div');
+            alertDiv.id = 'engine-message-alert';
+            alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            btn.parentNode.insertBefore(alertDiv, btn.nextSibling);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-play-fill me-2"></i>Run Engine Now';
+            setTimeout(() => location.reload(), 3000);
+            return;
+        }
+
+        location.reload();
+    } catch (e) {
+        alert('Engine run failed: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill me-2"></i>Run Engine Now';
+    }
+});
+
+// ----------------------------------------------------------------------
+// Watchdog for new engine runs
+// ----------------------------------------------------------------------
+let baselineSet = false;
+let lastKnownTimestamp = null;
+
+async function getLatestRunTimestamp() {
+    try {
+        const resp = await fetch('/admin/engine-runs', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store'
+        });
+        
+        if (!resp.ok) return null;
+        
+        const runs = await resp.json();
+        if (Array.isArray(runs) && runs.length > 0) {
+            return runs[0].created_at || null;
+        }
+        
+        return 'NO_RUNS_YET'; 
+    } catch (err) {
+        console.error('Watchdog fetch error:', err);
+        return null;
+    }
+}
+
+async function watchForNewRun() {
+    const currentTimestamp = await getLatestRunTimestamp();
+
+    if (currentTimestamp === null) return;
+
+    if (!baselineSet) {
+        lastKnownTimestamp = currentTimestamp;
+        baselineSet = true;
+        console.log('[Watchdog] Baseline timestamp set:', lastKnownTimestamp);
+        return;
+    }
+
+    if (currentTimestamp !== 'NO_RUNS_YET' && currentTimestamp !== lastKnownTimestamp) {
+        console.log('[Watchdog] New run detected. Reloading...');
+        location.reload();
+    }
+}
+
+setTimeout(async () => {
+    await watchForNewRun();
+    setInterval(watchForNewRun, 10000);
+}, 2000);
+
+// ----------------------------------------------------------------------
+// Date Filter for Matching History
+// ----------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn = document.getElementById('filter-date-toggle');
+    const filterContainer = document.getElementById('date-filter-container');
+    const applyBtn = document.getElementById('apply-date-filter');
+    const clearBtn = document.getElementById('clear-date-filter');
+    const fromInput = document.getElementById('filter-date-from');
+    const toInput = document.getElementById('filter-date-to');
+    const tbody = document.getElementById('engine-run-body');
+    const noRow = document.getElementById('no-run-history-row');
+    const visibleCountSpan = document.getElementById('visible-run-count');
+
+    toggleBtn.addEventListener('click', () => {
+        filterContainer.classList.toggle('d-none');
+    });
+
+    function applyDateFilter() {
+        const fromVal = fromInput.value;
+        const toVal = toInput.value;
+        const rows = tbody.querySelectorAll('tr');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            if (row === noRow) return;
+            const dateStr = row.getAttribute('data-date');
+            if (!dateStr) {
+                row.style.display = '';
+                visibleCount++;
+                return;
+            }
+            const rowDate = new Date(dateStr);
+            let show = true;
+            if (fromVal) {
+                const fromDate = new Date(fromVal);
+                show = show && rowDate >= fromDate;
+            }
+            if (toVal) {
+                const toDate = new Date(toVal);
+                toDate.setHours(23, 59, 59, 999);
+                show = show && rowDate <= toDate;
+            }
+            if (show) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (visibleCountSpan) {
+            visibleCountSpan.textContent = visibleCount;
+        }
+    }
+
+    applyBtn.addEventListener('click', applyDateFilter);
+    clearBtn.addEventListener('click', () => {
+        fromInput.value = '';
+        toInput.value = '';
+        applyDateFilter();
+    });
+    fromInput.addEventListener('change', applyDateFilter);
+    toInput.addEventListener('change', applyDateFilter);
+});
+
+// ----------------------------------------------------------------------
+// Charts
+// ----------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx1 = document.getElementById('spoilageChart');
+    if (ctx1) {
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: cropLabels,
+                datasets: [
+                    {
+                        label: 'Matched Supply (kg)',
+                        data: matchedVals,
+                        backgroundColor: '#2E7D32'
+                    },
+                    {
+                        label: 'Unmatched Supply (kg)',
+                        data: spoiledVals,
+                        backgroundColor: '#DC2626'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Kilograms' } }
+                }
+            }
+        });
+    }
+
+    const ctx2 = document.getElementById('successRateChart');
+    if (ctx2) {
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: runLabels,
+                datasets: [{
+                    label: 'Cumulative Saved (%)',
+                    data: successRates,
+                    borderColor: '#2E7D32',
+                    backgroundColor: 'rgba(46,125,50,0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Percentage of Listed Food Saved' }
+                    }
+                }
+            }
+        });
+    }
+});
+
+// ----------------------------------------------------------------------
+// Performance Benchmark
+// ----------------------------------------------------------------------
+document.getElementById('run-benchmark-btn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Running Benchmark…';
+    try {
+        const resp = await fetch('/admin/run-benchmark', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) {
+            const err = await resp.text();
+            throw new Error(err || 'Benchmark failed');
+        }
+        const data = await resp.json();
+        document.getElementById('benchmark-results').classList.remove('d-none');
+
+        const map = {
+            random: 'bm-random',
+            greedy: 'bm-greedy',
+            aspen: 'bm-aspen'
+        };
+
+        ['random', 'greedy', 'aspen'].forEach(key => {
+            const m = data[key];
+            if (!m) return;
+            document.getElementById(`${map[key]}-matched`).textContent = m.matched_kg;
+            document.getElementById(`${map[key]}-waste`).textContent = m.waste_kg;
+            document.getElementById(`${map[key]}-unmet`).textContent = m.unmet_kg;
+            document.getElementById(`${map[key]}-distance`).textContent = m.avg_distance_km;
+            document.getElementById(`${map[key]}-runtime`).textContent = m.runtime_seconds !== undefined ? m.runtime_seconds + 's' : '--';
+        });
+    } catch (e) {
+        alert('Benchmark failed: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill me-2"></i>Run Benchmark';
+    }
+});
+</script>
+{% endblock %}

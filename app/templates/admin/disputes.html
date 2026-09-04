@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-shield-exclamation me-1"></i>Dispute Resolution</small>
+            <h2 class="fw-bold text-dark">Pending Disputes</h2>
+            <p class="text-muted">Review evidence and resolve spoilage claims from vendors.</p>
+        </div>
+        <a href="/admin/dashboard" class="btn btn-outline-forest">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    {% if disputes %}
+    <div class="table-responsive">
+        <table class="table table-hover mb-4">
+            <thead class="table-light">
+                <tr>
+                    <th>Crop</th>
+                    <th>Qty (kg)</th>
+                    <th>Farmer</th>
+                    <th>Vendor</th>
+                    <th>Claims History</th>
+                    <th>Recorded Shelf Life (h)</th>
+                    <th>Min Required Shelf Life (h)</th>
+                    <th>Photo</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in disputes %}
+                <tr>
+                    <td><strong>{{ d.crop_type|capitalize }}</strong></td>
+                    <td>{{ d.quantity_kg }} kg</td>
+                    <td>{{ d.farmer_name }}</td>
+                    <td>{{ d.vendor_name }}<br><small class="text-muted">{{ d.vendor_phone }}</small></td>
+                    <td><span class="badge bg-harvest text-dark">{{ d.vendor_spoilage_claims_count }}</span></td>
+                    <td class="text-center">
+                        {% if d.recorded_shelf_life_at_receipt_h is not none %}
+                            {% if d.recorded_shelf_life_at_receipt_h <= 0 %}
+                                <span class="badge bg-danger">0 h (expired)</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ d.recorded_shelf_life_at_receipt_h }} h</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ d.min_shelf_life_required_h if d.min_shelf_life_required_h is not none else '—' }} h</td>
+                    <td>
+                        {% if d.photo_url %}
+                            <a href="{{ d.photo_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-image me-1"></i>View Photo
+                            </a>
+                        {% else %}
+                            <span class="text-muted small">No photo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-success resolve-btn" data-match-id="{{ d.match_id }}" data-resolution="APPROVE">
+                                <i class="bi bi-check-circle me-1"></i>Approve
+                            </button>
+                            <button class="btn btn-sm btn-danger resolve-btn" data-match-id="{{ d.match_id }}" data-resolution="REJECT">
+                                <i class="bi bi-x-circle me-1"></i>Reject
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-check-circle fs-1 text-leaf"></i>
+            <h5 class="mt-3">No pending disputes</h5>
+            <p class="text-muted">All spoilage claims have been resolved.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Resolution Reason Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1" aria-labelledby="resolveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="resolveModalLabel">Resolve Dispute</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resolve-context" class="mb-3 small text-muted"></div>
+                <label class="form-label fw-bold small">Judgment Reason <span class="text-danger">*</span></label>
+                <select id="resolution-reason" class="form-select">
+                    <option value="">Select a reason...</option>
+                </select>
+                <input type="text" id="custom-reason" class="form-control mt-2 d-none" placeholder="Enter custom reason">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-sm btn-success" id="confirm-resolve-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const APPROVE_REASONS = [
+        "Produce expired – 0h remaining shelf life at receipt",
+        "Arrival freshness below minimum required shelf life",
+        "Photo evidence clearly shows spoilage or damage",
+        "Vendor report consistent with shelf-life calculations",
+        "Other"
+    ];
+
+    const REJECT_REASONS = [
+        "Photo evidence insufficient or unclear",
+        "Produce met required freshness at delivery",
+        "Vendor claim inconsistent with evidence",
+        "Other"
+    ];
+
+    let pendingResolution = { matchId: null, resolution: null };
+
+    const modalEl = document.getElementById('resolveModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    const contextEl = document.getElementById('resolve-context');
+    const reasonSelect = document.getElementById('resolution-reason');
+    const customReasonInput = document.getElementById('custom-reason');
+    const confirmBtn = document.getElementById('confirm-resolve-btn');
+
+    function populateReasons(resolution) {
+        reasonSelect.innerHTML = '<option value="">Select a reason...</option>';
+        const reasons = resolution === 'APPROVE' ? APPROVE_REASONS : REJECT_REASONS;
+        reasons.forEach(reason => {
+            const opt = document.createElement('option');
+            opt.value = reason;
+            opt.textContent = reason;
+            reasonSelect.appendChild(opt);
+        });
+        customReasonInput.classList.add('d-none');
+        customReasonInput.value = '';
+    }
+
+    document.querySelectorAll('.resolve-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            pendingResolution.matchId = this.dataset.matchId;
+            pendingResolution.resolution = this.dataset.resolution;
+
+            // Set modal title and context
+            const actionText = pendingResolution.resolution === 'APPROVE' ? 'Approve' : 'Reject';
+            document.getElementById('resolveModalLabel').textContent = `${actionText} Spoilage Claim`;
+            contextEl.textContent = `You are about to ${actionText.toLowerCase()} this dispute. Please select a reason for your judgment.`;
+
+            populateReasons(pendingResolution.resolution);
+            confirmBtn.className = `btn btn-sm ${pendingResolution.resolution === 'APPROVE' ? 'btn-success' : 'btn-danger'}`;
+            confirmBtn.textContent = `Confirm ${actionText}`;
+            modal.show();
+        });
+    });
+
+    reasonSelect.addEventListener('change', function() {
+        if (this.value === 'Other') {
+            customReasonInput.classList.remove('d-none');
+        } else {
+            customReasonInput.classList.add('d-none');
+            customReasonInput.value = '';
+        }
+    });
+
+    confirmBtn.addEventListener('click', async () => {
+        let reason = reasonSelect.value;
+        if (reason === 'Other') {
+            reason = customReasonInput.value.trim();
+        }
+        if (!reason) {
+            alert('Please select or enter a reason for your judgment.');
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Submitting...';
+
+        try {
+            const resp = await fetch(`/admin/disputes/${pendingResolution.matchId}/resolve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    resolution: pendingResolution.resolution,
+                    reason: reason
+                })
+            });
+
+            if (resp.ok) {
+                modal.hide();
+                location.reload();
+            } else {
+                const err = await resp.json();
+                alert('Error: ' + (err.detail || 'Resolution failed'));
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = `Confirm ${pendingResolution.resolution === 'APPROVE' ? 'Approve' : 'Reject'}`;
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = `Confirm ${pendingResolution.resolution === 'APPROVE' ? 'Approve' : 'Reject'}`;
+        }
+    });
+});
+</script>
+{% endblock %}

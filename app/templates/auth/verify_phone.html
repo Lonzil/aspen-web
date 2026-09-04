@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <span class="bg-leaf rounded-circle p-3 d-inline-block">
+                            <i class="bi bi-phone fs-2 text-white"></i>
+                        </span>
+                    </div>
+                    <h4 class="text-forest fw-bold">Verify Your Phone Number</h4>
+                    <p class="text-muted small">
+                        Enter the 6‑digit code sent to 
+                        <strong>{{ phone if phone else 'your phone' }}</strong>
+                    </p>
+
+                    {% if config.DEMO_MODE %}
+                    <div class="alert alert-warning small text-start">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Demo Code: {{ demo_code }}</strong>
+                    </div>
+                    {% endif %}
+
+                    <form id="verify-form" method="POST" action="{{ url_for('verify_phone_post') }}" autocomplete="off">
+                        <input type="hidden" name="phone" value="{{ phone }}">
+                        <div class="mb-3">
+                            <input type="text"
+                                   id="otp-code"
+                                   name="code"
+                                   class="form-control text-center"
+                                   maxlength="6"
+                                   pattern="\d{6}"
+                                   inputmode="numeric"
+                                   autocomplete="one-time-code"
+                                   placeholder="000000"
+                                   style="letter-spacing: 0.5em; font-size: 1.5rem;"
+                                   required
+                                   autofocus>
+                        </div>
+                        <button type="submit" id="submit-btn" class="btn btn-forest w-100 mb-2">
+                            Verify <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </form>
+
+                    <p class="small text-muted mb-0">
+                        <span id="resend-timer">Resend in <strong>60s</strong></span>
+                        <a href="#" id="resend-link" class="text-forest fw-bold d-none">Resend Code</a>
+                    </p>
+                    <div id="resend-message" class="small mt-2"></div>
+                </div>
+            </div>
+            <p class="text-center text-muted small mt-3">
+                Wrong number? &bull; <a href="{{ url_for('support_page') }}" class="text-muted">Need help?</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const timerEl = document.getElementById('resend-timer');
+const linkEl = document.getElementById('resend-link');
+const messageEl = document.getElementById('resend-message');
+const otpInput = document.getElementById('otp-code');
+const verifyForm = document.getElementById('verify-form');
+
+let countdownInterval = null;
+
+// ---------------------------------------------------------------------------
+// OTP input sanitization & auto-submit
+// ---------------------------------------------------------------------------
+otpInput.addEventListener('input', (e) => {
+    // Strip non-digits instantly
+    e.target.value = e.target.value.replace(/\D/g, '');
+
+    // Auto submit form when 6 digits completed
+    if (e.target.value.length === 6) {
+        verifyForm.submit();
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
+function hideMessage() {
+    if (messageEl) messageEl.textContent = '';
+}
+
+function showMessage(text, type = 'success') {
+    if (!messageEl) return;
+    messageEl.textContent = text;
+    messageEl.className = `small mt-2 ${type === 'success' ? 'text-leaf' : 'text-danger'}`;
+}
+
+function startCountdown(seconds = 60) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    let remaining = seconds;
+
+    timerEl.classList.remove('d-none');
+    linkEl.classList.add('d-none');
+    timerEl.innerHTML = `Resend in <strong>${remaining}s</strong>`;
+
+    countdownInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            clearInterval(countdownInterval);
+            timerEl.classList.add('d-none');
+            linkEl.classList.remove('d-none');
+            linkEl.style.pointerEvents = 'auto';
+            linkEl.textContent = 'Resend Code';
+        } else {
+            timerEl.innerHTML = `Resend in <strong>${remaining}s</strong>`;
+        }
+    }, 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Resend link handler
+// ---------------------------------------------------------------------------
+async function handleResend(e) {
+    e.preventDefault();
+    if (linkEl.style.pointerEvents === 'none') return;  // Prevent double-click
+
+    hideMessage();
+
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (!phoneInput || !phoneInput.value.trim()) {
+        showMessage('Phone number is missing. Please go back and register again.', 'error');
+        return;
+    }
+
+    // Disable link while request is running
+    linkEl.style.pointerEvents = 'none';
+    linkEl.textContent = 'Sending...';
+
+    try {
+        const formBody = new URLSearchParams();
+        formBody.append('phone', phoneInput.value.trim());
+
+        const resp = await fetch('/verify-phone/resend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formBody.toString(),
+            credentials: 'include'
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok) {
+            const phone = encodeURIComponent(phoneInput.value.trim());
+            window.location.href = `/verify-phone?phone=${phone}`;
+        } else {
+            showMessage(data.detail || 'Failed to resend code. Please try again later.', 'error');
+            linkEl.style.pointerEvents = 'auto';
+            linkEl.textContent = 'Resend Code';
+        }
+    } catch (err) {
+        showMessage('Network error. Please check your connection and try again.', 'error');
+        linkEl.style.pointerEvents = 'auto';
+        linkEl.textContent = 'Resend Code';
+    }
+}
+
+linkEl.addEventListener('click', handleResend);
+
+// Start the initial countdown on page load
+startCountdown(60);
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <small class="text-forest fw-bold text-uppercase"><i class="bi bi-flag me-1"></i>Trust & Safety</small>
+            <h2 class="fw-bold text-dark">Flagged Vendors</h2>
+            <p class="text-muted">Vendors with suspicious spoilage‑claim patterns.</p>
+        </div>
+        <a href="/admin/dashboard" class="btn btn-outline-forest">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    {% if flagged %}
+    <div class="table-responsive">
+        <table class="table table-hover mb-4">
+            <thead class="table-light">
+                <tr>
+                    <th>Vendor Name</th>
+                    <th>Phone</th>
+                    <th>Spoilage Claims</th>
+                    <th>Flag Reason</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vendor in flagged %}
+                <tr>
+                    <td><strong>{{ vendor.name }}</strong></td>
+                    <td>{{ vendor.phone }}</td>
+                    <td><span class="badge bg-harvest text-dark">{{ vendor.spoilage_claims_count }}</span></td>
+                    <td class="small text-muted">{{ vendor.flag_reason or '—' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success unflag-btn" data-vendor-id="{{ vendor.id }}">
+                            <i class="bi bi-check-circle me-1"></i>Unflag
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-emoji-smile fs-1 text-leaf"></i>
+            <h5 class="mt-3">No flagged vendors</h5>
+            <p class="text-muted">All vendors are in good standing.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Unflag vendor buttons
+    document.querySelectorAll('.unflag-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const vendorId = this.dataset.vendorId;
+            
+            if (!confirm('Remove the flag from this vendor? They will return to normal standing.')) {
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/admin/flagged-vendors/${vendorId}/unflag`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (resp.ok) {
+                    location.reload();
+                } else {
+                    const err = await resp.json();
+                    alert('Error: ' + (err.detail || 'Unflag failed'));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
